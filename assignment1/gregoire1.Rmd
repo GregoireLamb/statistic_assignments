@@ -191,7 +191,7 @@ We will examine the result obtained by each algorithm on the same two datasets w
 ```{r,echo=TRUE}
 library(xtable)
 
-res <- matrix(c(wrapper(x1),wrapper(x2)), ncol=5, byrow=TRUE)
+res <- matrix(c(variances(x1),variances(x2)), ncol=5, byrow=TRUE)
 res <- as.table(res)
 col_name <- c("precise", "excel", "shifted", "online", "var")
 raw_name <- c("x1","x2")
@@ -251,17 +251,6 @@ Usually the result gaven by the excel algorithm differs to the other for x2. It 
 
 similaire to the derivative, this number allows to 
 Let's assume S is small and use $k = mean * \sqrt{\frac{n}{S}} = \frac{mean}{s_n}$
-
-
-```
-
-```{r, echo=TRUE}
-condition_number(precise,x2)
-condition_number(excel,x1)
-condition_number(online,x3)
-condition_number(var,x2)
-condition_number(shifted,x2)
-```
 
 
 </div></pre>
