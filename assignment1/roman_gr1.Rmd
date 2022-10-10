@@ -261,7 +261,10 @@ In the third scenario with the mean = 0.000001 the condition number takes value 
 The best condition number k = 1 is achieved for the constant shift of distribution by the mean of the distribution.
 
 ### Why shift by c = mean(data) has the best condition number k?
-The best k can be achieved when mean(data) - c = 0, this can be achieved with c = mean(data) 
+With k computed as follows:
+$\bar{k} = \sqrt{1 + \frac{n}{S}\left (\bar{x}-c \right )}$
+It means that the most robust with $k=1$ for variance computation can be obtained with the shift $c = \bar{x}$.
+
 
 ## Task 4
 ### Compare condition numbers for the 2 simulated data sets and a third one where the requirement is not fulfilled, as described during the lecture.
@@ -280,6 +283,6 @@ func_cond_num(x3, 0)
 ```
 ### Conclusion
 - Condition numbers for datasets x1 and x3 are the same
-- For dataset x2 condition number is very high, which means that variance is less robust to the errors and it leads to higher error. There is a practical sense to perform shift corrections by sample mean to reduce the condition number k
+- For dataset x2 condition number is very high, which means that variance is less robust to the errors. There is a practical sense to perform shift corrections by sample mean to reduce the condition number k
 
 </div></pre>
