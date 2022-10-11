@@ -1,0 +1,100 @@
+---
+title: "Exercice n°2"
+subtitle: "Random Number Generation through CDF and acceptance-rejection sampling"
+author: "Grégoire de Lambertye"
+date: "`r Sys.Date()`"
+header-includes:
+   - \usepackage{amsmath,amssymb}
+   - \usepackage[utf8]{inputenc}
+output: pdf_document
+---
+
+# Pseudo-random number generation with Linear Congruential Random Number Generation Algorithm
+
+Pseudo-random number generators (PRNG) are algorithms used in computer science to simulate random number generation. They are called pseudo because they use recursive process to generate numbers and they are initialized with a seed. 
+They are by this way reproducible and deterministic but they look random. 
+
+
+The main idea of the linear congruential random number generator is to define a sequence based on the linear formula
+${x_n+1} = (a · x_n + c) (m)$
+
+Here is a linear congruential number generator : 
+```{r setup, include=TRUE, cache = FALSE}
+
+```
+
+
+```{r, include=FALSE}
+congruential_gen <- function(n,m,a,c=0,x0)
+{
+  us <- numeric(n)
+  for (i in 1:n)
+  {
+    x0 <- (a*x0+c) %% m
+    us[i] <- x0 / m
+  }
+  return(us)
+}
+
+```
+That we can observe here 
+```{r, echo = TRUE, fig.dim=c(10,6)}
+
+plot(congruential_gen(100,178,3,44,72), main="Random number generator", ylab="Random values")
+```
+The modulus number m as a huge influence on the sequence and act as a "maximal number generated" befor the mapping between 0 and 1. It also a major parameter for the sequence length. With a small m, it's easy to recognize the sequence quickly: 
+
+```{r, echo = TRUE,  fig.show="hold", out.width="50%"}
+plot(congruential_gen(15,5,7,2,0), main="Random number generator m=5", ylab="Random numbers")
+plot(congruential_gen(15,20,7,2,4), main="Random number generator m=20", ylab="Random numbers")
+plot(congruential_gen(15,150,7,2,4), main="Random number generator m=150", ylab="Random numbers")
+
+```
+It seems pretty easy to understand the sequence of the 2 firsts plot. For the m=150 sample we would need more data to be able to recognize the sequence. 
+
+# Exponential distribution
+
+The exponetial function is obtain with this equation : $F(x) = 1-exp(-λx), λ>0$
+```{r, echo=TRUE}
+expf <- function(x, lambda){
+  return(1-exp(-lambda*x))
+}
+
+```
+
+Assume you can generate easily uniform random variables. How can you obtain then a random sample from the exponential distribution?
+
+An easy way to obtain uniform random variables is to  
+use https://statproofbook.github.io/P/exp-qf.html#mjx-eqn-eq%3Aexp-cdf
+. Compute the quantile function F−1x. => F−1 X (u) = inf{x : FX (x) ≥ u}
+2. Generate a u ∼ unif [0, 1].
+3. Make the transformation x = F  −1 X (u)
+
+
+```{r}
+
+```
+
+
+```{r}
+x = seq(from=0.1, to=2, length.out=200)
+res <- c()
+
+for(i in x){
+  res <- append(res, expf(i,3))
+}
+
+plot(res)
+
+```
+
+
+
+
+
+
+
+
+
+
+
