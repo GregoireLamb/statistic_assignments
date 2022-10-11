@@ -1,0 +1,221 @@
+---
+title: 'Assignment 1: Variance Estimation'
+author: "Joan Salvà"
+date: "October 2022"
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+subtitle: Statistical Simulation and Computerintensive Methods
+---
+&nbsp;
+
+The goal of the assignment is to implement and compare the performance and accuracy of four diferent methods to calculate the finite variance of a sample.
+
+
+### 1. Precise
+We will compute the variance directly from the formal definition by precomputing the mean and then iterating over the sample to sum the difference squares.
+
+
+The mathematical formula would be:
+$$S^2 = \frac{1}{n - 1}\sum_{i=1}^{n}(x_i - \bar{x})^2,$$
+where $\bar{x}$ corresponds to the mean of the sample.
+
+```{r, echo=TRUE}
+precise <- function(sample) {
+  n <- length(sample)
+  
+  # Mean
+  res <- 0
+  for (i in 1:n) {
+    res <- res + sample[i]
+  }
+  mean <- res / n
+  
+  # Variance
+  res <- 0
+  for (i in 1:n) {
+    res = res + (sample[i] - mean)^2
+  }
+  return(res / (n - 1))
+  
+}
+```
+### 2 & 3: Excel and Shifted
+We will code a one-pass algorithm that uses the fact that we can write
+$$S^2 = \frac{P_1-P_2}{n - 1}, \quad \text{where} \\ P_1 = \sum_{i = 1}^{n} x_i^2 \\ P_2 = \frac{1}{n} \left( \sum_{i=1}^nx_i\right)^2$$
+Since we know that the variance estimate is invariant under translations, i.e., $\sigma_{x}^2 = \sigma_{x + c}^2$, the following alternative definitions for $P_1$ and $P_2$ would also work for any $c\in \mathbb{R}$:
+$$
+P_1 = \sum_{i = 1}^{n} (x_i - c)^2 \\ P_2 = \frac{1}{n} \left( \sum_{i=1}^n x_i-c\right)^2
+$$
+The *excel* to estimate the variance corresponds to taking $c=0$, and the *shift* corresponds to testing different values for the parameter $c$. We will first code *variance_3* to then define *variance_2* as a particular case.
+
+```{r, echo=TRUE}
+shifted <- function(sample, c = NULL) {
+  n <- length(sample)
+  if (is.null(c)) {
+    c <- sample[1]
+  }
+  
+  p_1 <- 0
+  p_3 <- 0
+  for (i in 1:n) {
+    p_1 = p_1 + (sample[i] - c)^2
+    p_3 = p_3 + sample[i] - c
+  }
+  p_2 <- p_3^2 / n
+  return((p_1 - p_2) / (n - 1))
+  
+}
+
+excel <- function(sample) {
+  return(shifted(sample, c=0))
+}
+```
+### 4. Online
+In this case, we assume that the data points arrive sequentially and that we want to have an estimate of the variance for the available data at all times.
+
+The recursive formula works as follows:
+
+$$
+S_1^2 = 0 \\
+\bar{x_1} = x_1 \\
+\bar{x}_n = \bar{x}_{n-1}+ \frac{x_n - \bar{x}_{n-1}}{n}, \quad n > 1\\
+S_n^2 = \frac{n-2}{n-1}S_{n-1}^2 + \frac{(x_n-\bar{x}_{n-1})^2}{n}, \quad n >1
+$$
+In the implementation, we are going to use the formal definition of variance for the cases $n \leq 2$ and the general formula for the other cases.
+
+```{r, echo=TRUE}
+online <- function(sample) {
+  n <- 2
+  mean <- 0.5 * (sample[1] + sample[2])
+  s_squared <- (sample[1]-mean)^2 + (sample[2] - mean)^2
+  
+  for (i in 3:length(sample)) {
+    n <- n + 1
+    s_squared <- (n - 2) / (n - 1) * s_squared + 1/n * (sample[i] - mean)^2
+    mean <- mean + 1/n * (sample[i] - mean)
+  }
+  return(s_squared)
+}
+
+```
+
+----------------
+## Comparison
+
+It makes sense to define a wrapper function that estimates the variance using the five different methods:
+
+```{r}
+
+variances <- function(sample) {
+  return(
+    c(precise(sample), excel(sample), shifted(sample), online(sample), var(sample))
+    )
+}
+```
+
+We now define the three different sample vectors we will test our calculations on. We fix the sample size to 100 and set the means to $0$, $10^3$, and $10^6$.
+```{r, echo=TRUE}
+library(microbenchmark)
+matrikelnummer <- 12223411
+set.seed(matrikelnummer)  
+x1 <- rnorm(100)
+x2 <- rnorm(100, mean=1e3)
+x3 <- rnorm(100, mean=1e6)
+```
+
+
+```{r,echo=FALSE}
+res <- matrix(c(variances(x1),variances(x2),variances(x3)), ncol=5, byrow=TRUE)
+res <- as.table(res)
+cols <- c("precise", "excel", "shifted", "online", "var")
+rows <- c("x1", "x2", "x3")
+rownames(res) <- rows
+colnames(res) <- cols
+knitr::kable(res, caption = "Variance calulation")
+```
+
+The table shows that the *excel* method is not robust as it returns values that differ from all the other ones as the mean of the sample grows.
+
+
+### Computation time
+
+The *microbenchmark* library provides an easy way of comparing the runtime of different function calls. For this example, we will call the functions 200 times each. 
+```{r, echo=FALSE}
+micro <- microbenchmark(precise(x1), excel(x1), shifted(x1), online(x1), var(x1),  times=200)
+knitr::kable(summary(micro), caption="Summary table")
+boxplot(micro, main="Time distribution")
+```
+
+The results of the test show that the fastest implementation is the *shifted* one, closely  followed by the *precise* and the *excel*. The slowest one is the *online*, but we have to acknowledge that it is not a batch method so it can't exploit the good properties of batch data.
+
+Note: we could create a custom function to compute the runtime of a function using the ``Sys.time()`` method. The code below captures the idea. the libraries *tictok* or *rbenchmark* provide similar resources as *microbenchmark*. 
+```{r}
+print_runtime <- function(f) {
+  a <- Sys.time()
+  f()
+  print(Sys.time() - a)
+}
+```
+
+
+
+### Condition number and numerical stability
+The condition number for the variance is defined as 
+$$\kappa = \sqrt{\frac{\sum{_{i=1}^{n}}x^2}{S}} = \sqrt{1+\frac{\bar{x}^2 n }{S}} \\
+S = \sum_{i=1}^n (x_i -\bar{x})^2$$
+
+Note that for the case of the shifted variance, it becomes 
+$$\sqrt{1+\frac{(\bar{x}-c)^2 n }{S}}$$
+
+The *precise*, *excel*, and *online* implementations share the same condition number so we cannot infer qualities of the different versions from the condition number.
+
+Finding the most stable version of the *shifted* algorithm goes through finding the value $c$ that minimizes the condition number. The global minimum of the function is $c= \bar{x}$. Taking an estimate of the mean as $c$, the sample becomes perfectly conditioned and the *shifted* algorithm should outperform the others in terms of stability.
+
+### Stability experiment
+
+Despite the fact that we analytically know the optimal value of $c$, let's test the stability of the *shifted* algorithm for different values of $c$. We will test it on the sample with mean $10^6$.
+
+We define a range of values for $c$ and for each of them, we will compare a 500 times the algorithm estimation of the variance against the same computation on a perturbed sample. Taking the mean relative difference for each $c$ gives the following plot.
+
+```{r, echo=TRUE}
+set.seed(matrikelnummer)
+perturbation <- 0.000001
+no_tests_per_c <- 500
+x2 <- rnorm(100, mean=1e6)
+res <- c()
+
+# Domain of values to try
+c_values <- seq(-10 * mean(x2), 10 * mean(x2), 0.1e6)
+
+
+for (c in c_values) {
+  var_value_wout_perturbation <- shifted(x2, c)
+  changes <- c()
+  for (i in 1:1000) {
+    x <- x2 + perturbation * rnorm(length(x2))
+    var <- shifted(x, c)
+
+    changes <- c(changes, var / var_value_wout_perturbation - 1)
+    
+  }
+  res <- c(res, mean(changes))
+}
+```
+
+```{r, echo=FALSE}
+
+plot(c_values, abs(res), main = 'Propagation of perturbation by shift parameter', xlab = 'Shift parameter value', ylab = 'Mean propagation', cex = 0.8, col = 'blue')
+
+interval <- mean(x2)
+abline(v=mean(x2) + interval, col = 'grey')
+abline(v=mean(x2) - interval, col = 'grey')
+abline(v=mean(x2), col = 'orange')
+```
+
+It is clear that large absolute values of the shift parameter lay worse stability. The plotted function, despite having a random component, should respect symmetry. Using that and visual inspection, one could sense that the minimum is close to the orange line, that happens to be the estimated mean of the sample ($10^6$). Our results support the analytic solution to the stability problem discussed before.
+
+Note, however, that in a fairly wide interval of values for $c$ also provide a very stable version of the algorithm. In the plot, the vertical grey lines define the region $|c - \bar{x}| \leq 10^6$. As pointed by Chan T, Et al. in *Algorithms for computing the sample variance*, despite not optimal, any value of $c$ in the range of the sample would provide a very similar and close to optimal stability.
+
+</div></pre>
