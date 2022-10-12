@@ -1,0 +1,202 @@
+---
+title: 'Assignment 2: Random Number Generation through CDF and acceptance-rejection sampling'
+author: "Joan Salvà"
+date: "October 2022"
+output:
+  pdf_document: default
+  html_document:
+  df_print: paged
+subtitle: Statistical Simulation and Computerintensive Methods
+---
+
+
+### Linear Congruential Random Number Generation Algorithm
+The main idea of the linear congruential random number generator
+is to define a sequence based on the linear formula
+$$x_{n+1} = x_n\cdot a + c \mod m $$
+$$u_{n+1} = x_{n + 1} / m.$$
+Then $u_0,\dots u_n$ is the pseudo-random generated sample.
+
+The corresponding code is provided below. $a$, $c$, and $m$ would be fixed parameters of the algorithm, whereas $x_0$ would be the seed that allows us to reproduce the same sample. To avoid cycles, $m$ should be a prime and preferably large. 
+```{r}
+lin_con_unif_generator <- function(a, c, m, n_points, x_0) {
+  sample <- numeric(n_points)
+  
+  for (i in 1:n_points) {
+    sample[i] <- x_0 / m
+    x_0 <- (x_0 * a + c) %% m
+  }
+  
+  return(sample)
+}
+```
+
+In order to test our algorithm, we will plot a 2-dimensional grid of data points and expect no patterns in the points distribution. We fix the parameters of the algorithm to $a=9, c=3, m=7789$ and set the seed to $x_0 = \pi$ and $x_0 = \pi / 2$, respectively.
+```{r, echo = TRUE}
+a <- 9
+c <- 3
+m <- 7789
+
+x <- lin_con_unif_generator(a,c,m,n_points=0.5e4, x_0=pi)
+y <- lin_con_unif_generator(a,c,m,n_points=0.5e4, x_0=pi/ 2)
+plot(x, y, main = 'Distribution of randomly generated 2d points')
+```
+No distribution patterns can be seen in the *scatterplot*. Additionally, we could fit different distributions to our sampled data and check that the best fit (least AIC) corresponds to the Uniform distributition. 
+
+```{r, results='hide'}
+x <- lin_con_unif_generator(a,c,m,n_points=200, x_0=pi)
+
+library(fitdistrplus)
+
+distributions <- c('exp', 'cauchy', 'gamma', 'logis', 'beta', 'weibull', 'unif')
+
+aic <- c()
+for (dist_name in distributions) {
+  aic <- c(aic, fitdist(x, dist_name)$aic)
+}
+barplot(aic, names.arg = distributions, col = 'grey', main = 'AIC of the fit distribution')
+```
+As expected, the Uniform distributions fits our sample the best. However, it's surprising that some parameters of the Beta distribution have also a low AIC value. 
+
+
+### Randomly sampling from the Exponential Distribution
+
+From now on we can assume that we can sample Uniform Random Variables (we will use the R function `runif` for this purpose.)
+
+The goal of this section is to generate a sample that follows an Exponential Distribution. Recall its *cdf* and *pdf* functions:
+$$F(x) = 1 - \exp(-\lambda x), \quad \lambda > 0 $$
+$$ f(x) = F'(x) = \exp(-\lambda x)$$
+
+We will use the fact that for a given random variable $X$ with density $f_X(x)$, the transformation $Y = g(X)$ has density $f_Y(y) = f_X(h(y)) \cdot h'(y) \text{,   with } g = h^{-1}$.
+
+Letting $X = \text{Unif}(0,1)$ with $f_X(x) = 1$, we get the following equality that we can integrate to get $h$ and its inverse $g$.
+$$\lambda \exp(-\lambda y) = h'(y)$$
+$$\Rightarrow h(y) = -\exp(-\lambda y) + C $$ 
+$$\Rightarrow g(x) = -\frac{1}{\lambda}\log{(C-x)}$$
+The value $C$ must be one because the density function area must integrate to one. 
+
+We already have the desired transformation, so it's time to implement it and test it. 
+```{r}
+
+beta_generator <- function(lambda, n_samples) {
+  return(-1 / lambda * log(1 - runif(n_samples)))
+}
+
+```
+
+We will use the QQ plot to assess the quality of the distribution. It consists in comparing the theoretical quantiles against the quantiles of the sample.
+
+```{r, echo = FALSE}
+matrikelnummer <- 12223411
+set.seed(matrikelnummer)
+
+lambdas <- c(0.005, 1, 50)
+
+for (lambda in lambdas) {
+  y <- beta_generator(lambda, 1000)
+  qqplot(qexp(ppoints(1000), rate=lambda), y, xlab="Theoretical Quantiles", ylab= "Sample Quantiles", main = paste('QQ-plot, lambda =', lambda))
+  abline(a=0, b=1, col='orange')
+  
+}
+
+```
+As we can see, the theoretical and sample quantiles are well aligned and one can conclude that the generated data points indeed follow an Exponential distribution.
+
+
+### Randomly sampling from the Beta distribution.
+
+In this case, we will use the Acceptance-Rejection method.
+We will first focus on the case of $\alpha = \beta = 2$. Recall the general *pdf* of Beta:
+$$f(x;\alpha, \beta)= \frac{\Gamma(\alpha +\beta)}{\Gamma(\alpha)\Gamma(\beta)}x^{\alpha-1} (1-x)^{\beta -1}$$
+Therefore, $f(x; 2,2) = \frac{3}{2}x\cdot(1-x)$ and the following plot (black line) will help us get an idea of the shape of the function. On orange, we plotted the density of a Normal(0.5, 1) distribution, which looks a good choice for the bound of our function.
+
+```{r, echo = FALSE}
+f22 <- function(x) {
+  return(3 / 2 * x * (1-x))
+}
+x <- seq(0, 1, 0.0001)
+plot(x, f22(x), type='l', ylim = c(0,0.5))
+
+lines(x, dnorm(x, mean=.5, sd=1), type='l', col='orange')
+```
+
+In this case, we are free to choose any $c\geq 1$. Let's take $c=1.1$ and code the sampling method:
+
+```{r, echo = TRUE}
+
+generate_beta_22 <- function(n) {
+  n <- 1000; iter <- 0; accepted <- 0
+  x <- numeric(n)
+  CC <- 1.1
+  while(accepted < n) {
+    iter <- iter + 1
+    u <- runif(1)
+    y <- rbeta(1, 2, 2)
+    
+    if (u <= dbeta(y, 2, 2) / (CC * dnorm(y, mean=0.5))) {
+      accepted <- accepted + 1
+      x[accepted] <- y
+    }
+  }
+  print(paste('Acceptance proportion: ', round(n / iter * 100, 4), '%'))
+  return(x)
+}
+
+y <- generate_beta_22(1000)
+
+qqplot(qbeta(ppoints(1000), 2, 2), y, xlab="Theoretical Quantiles", ylab= "Sample Quantiles", main = paste('QQ-plot'))
+abline(a=0, b=1, col='orange')
+
+
+```
+As we can tell by the QQ plot, the sampled data reasonably follows a Beta distribution. The smaller the $c$ value is, the higher the acceptance rate is. Our choice provides a 98% acceptance rate which is quite high.
+
+
+We finally have to come up with a version that works for all Beta distribution such that $a, b \geq 1$. The idea will be to adapt the parameter $c$ to the given $a, b$ parameters.
+
+The Beta distribution density function takes very different shapes for different values of $a,b$. A great idea for coming up with a bound of the function will be to plot it in Desmos (https://www.desmos.com/calculator) with sliding values for $a,b$. By trying multiple combinations of those values, we come up with a bound that will work:
+$f(x;\alpha, \beta) \leq \max(\alpha, \beta)$ if $x \in [0,1]$ and $\alpha, \beta \geq 1$. 
+Our bound does not depend on $x$, but we can always use the density of the Uniform distribution ($f_U(x) = 1$) and a proper $c = \max(\alpha, \beta) \geq 1$,
+
+We can adapt the previous code in the following way:
+
+```{r}
+generate_beta <- function(n, alpha, beta) {
+  n <- 1000; iter <- 0; accepted <- 0
+  x <- numeric(n)
+  CC <- max(alpha, beta)
+  while(accepted < n) {
+    iter <- iter + 1
+    u <- runif(1)
+    y <- runif(1)
+    
+    if (u <= dbeta(y, alpha, beta) / (CC * dunif(y))) {
+      accepted <- accepted + 1
+      x[accepted] <- y
+    }
+  }
+  print(paste('Acceptance proportion: ', round(n / iter * 100,4), '%'))
+  return(x)
+}
+```
+
+We will finally test in for some parameter choices: $(\alpha, \beta) \in \{(1,4), (4,1), (5,5), (10,10)\}$
+
+```{r, echo=FALSE}
+library(ggplot2)
+library(gridExtra)
+
+params <-list(c(1,4), c(4,1), c(5,5), c(10,10))
+for (param in params) {
+  alpha <- param[1]; beta <- param[2];
+  print(paste('Alpha = ', alpha, ', Beta = ', beta))
+  y <- generate_beta(1000, alpha, beta)
+  qqplot(qbeta(ppoints(1000), alpha, beta), y, xlab="Theoretical Quantiles", ylab= "Sample Quantiles", main = paste('QQ-plot (alpha, beta) = (', alpha, ',', beta, ')'))
+  abline(a=0, b=1, col='orange')
+}
+
+```
+The QQ plots show that the random sample fairly follows a Beta distribution with the selected parameters. However, the acceptance proportions are rather low and decrease as $c = \max(\alpha, \beta)$ grows, which corresponds to the growth of the distribution parameters. The shape of the density of the Beta distribution makes it difficult to choose any other proposal distribution than our choice.
+
+
+</div></pre>
