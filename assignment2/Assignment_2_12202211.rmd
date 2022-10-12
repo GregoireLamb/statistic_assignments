@@ -1,0 +1,203 @@
+---
+title: "Exercice n°2"
+subtitle: "Random Number Generation through CDF and acceptance-rejection sampling"
+author: "Grégoire de Lambertye"
+date: "`r Sys.Date()`"
+header-includes:
+   - \usepackage{amsmath,amssymb}
+   - \usepackage[utf8]{inputenc}
+output: pdf_document
+---
+
+```{r setup, include=TRUE, cache = FALSE}
+
+```
+
+
+# 1 Pseudo-random number generation with Linear Congruential Random Number Generation Algorithm
+
+Pseudo-random number generators (PRNG) are algorithms used in computer science to simulate random number generation. They are called pseudo because they use recursive process to generate numbers and they are initialized with a seed. 
+They are by this way reproducible and deterministic but they look random. 
+
+
+The main idea of the linear congruential random number generator is to define a sequence based on the linear formula
+${x_n+1} = a * x_n + c\mod m$
+
+Here is a linear congruential number generator :
+
+
+```{r, include=FALSE}
+congruential_gen <- function(n,m,a,c=0,x0)
+{
+  us <- numeric(n)
+  for (i in 1:n)
+  {
+    x0 <- (a*x0+c) %% m
+    us[i] <- x0 / m
+  }
+  return(us)
+}
+
+```
+That we can observe here 
+```{r, echo = TRUE, fig.dim=c(10,6)}
+
+plot(congruential_gen(100,178,3,44,72), main="Random number generator", ylab="Random values")
+```
+The modulus number m as a huge influence on the sequence and act as a "maximal number generated" befor the mapping between 0 and 1. It also a major parameter for the sequence length. With a small m, it's easy to recognize the sequence quickly: 
+
+```{r, echo = TRUE,  fig.show="hold", out.width="50%"}
+plot(congruential_gen(15,5,7,2,0), main="Random number generator m=5", ylab="Random numbers")
+plot(congruential_gen(15,20,7,2,4), main="Random number generator m=20", ylab="Random numbers")
+plot(congruential_gen(15,150,7,2,4), main="Random number generator m=150", ylab="Random numbers")
+
+```
+It seems pretty easy to understand the sequence of the 2 firsts plot. For the m=150 sample we would need more data to be able to recognize the sequence. 
+
+# 2 Exponential distribution
+
+The exponential distribution has the following cdf: 
+$$F(x) = 1-exp(-\lambda x), \lambda>0 \text{ and }x\in[0:\infty]$$
+
+```{r, echo=TRUE}
+expf <- function(x, lambda){
+  return(1-exp(-lambda*x))
+}
+
+```
+
+
+### Assume you can generate easily uniform random variables. How can you obtain then a random sample from the exponential distribution?
+
+To generate uniform random variables it's convenient to use runif(). This function provided by R can generate random numbers that follow a uniform distribution. 
+```{r, echo = TRUE}
+set.seed(12202211)
+sample <- runif(100,0,1)
+```
+
+
+A way to obtain a random sample from the exponential distribution is to use the *quantile function* $Q_{x}(p)$ defined as the smallest x, such that $F_{X}(x) = u$ whith $u \in [0:1]$
+$$
+Q_{X}(u) = min\{x \in R|F_{X}(x)=u\} = F_{X}^{-1}(x)
+$$
+We can compute $X \sim Exp(\lambda)$ with this workaround: 
+$$
+u = 1-exp(-\lambda x)\\
+exp(-\lambda x) = 1 - u\\
+-\lambda x =ln(1 - u)\\
+x = 1-\frac{ln(1 - u)}{\lambda}
+$$
+```{r, exho=TRUE, fig.show="hold", out.width="30%"}
+library("SciViews")
+set.seed(12202211)
+exp_distrib <- function(lambda,n){
+  return(-1 / lambda * ln(1 - runif(n, 0, 1)))
+}
+
+lambda_list <- c(0.5,2,5)
+
+for(l in lambda_list){
+  qqplot(qexp(ppoints(1000), rate=l), exp_distrib(l,1000) , xlab="Theoretical Quantiles", ylab= "Sample Quantiles", main = paste('QQ-plot, lambda =', l))
+  abline(a=0, b=1, col='orange')
+}
+
+```
+
+The theorical quantile and the computed onces arewell aligned, we can conlude that our samples follow an exponential distribution. 
+
+# 3 Acceptance-Rejection approach
+We will try to use the  Acceptance-Rejection method to approach a beta distribution. The Beta distribution has the following pdf:
+$$f(x;\alpha, \beta)= \frac{\Gamma(\alpha +\beta)}{\Gamma(\alpha)\Gamma(\beta)}x^{\alpha-1} (1-x)^{\beta -1}$$
+$\Gamma$ is the gamma function define as : 
+$$
+\Gamma(z)=\int_{0}^{\infty}t^{z-1}e^{-t}dt
+$$
+
+
+We will focus on the case where $a=2 \text{ and } b=2$ i.e. 
+$$
+f(x;2,2)= \frac{\Gamma(4)}{\Gamma(2)\Gamma(2)}x (1-x) =6*x(1-x)
+$$
+```{r, echo = FALSE}
+f22 <- function(x) {
+  return(dbeta(x,2,2))
+}
+x <- seq(0, 1, 0.0001)
+plot(x, f22(x), type='l', ylim = c(0,2.5))
+lines(x, 1.3*dnorm(x, mean=0.5, sd=1/3), type='l', col='green')
+legend("topright", c("beta","c * normal ditribution"), col=c("black","green"), lty=1)
+```
+We print in black the beta (2,2) distribution. After trying different values for c and the standard deviation, the candidate c=1.3 and $X \sim \mathcal{N}(0.5,1/3)$ seems to fit the curve well (in green). 
+
+```{r}
+beta22_approach <- function(n, alpha=2, beta=2){
+  iter <- 0; accepted <- 0
+  x <- numeric(n)
+  CC <- 1.3
+  while(accepted < n) {
+    iter <- iter + 1
+    u <- runif(1)
+    y <- runif(1)
+    if (u <= dbeta(y, alpha, beta) / (CC * dnorm(y,0.5,1/3))) { 
+      accepted <- accepted+ 1
+      x[accepted] <- y
+      }
+    }
+  print(paste('Acceptance proportion: ', round(n / iter * 100,4), '%'))
+  return(x)
+}
+
+invisible(beta22_approach(1000))
+
+```
+
+```{r}
+
+beta_accept_rej <- function(n, alpha, beta){
+  iter <- 0; accepted <- 0
+  x <- numeric(n)
+  CC <- max(alpha, beta)
+  while(accepted < n) {
+    iter <- iter + 1
+    u <- runif(1)
+    y <- runif(1)
+    if (u <= dbeta(y, alpha, beta) / (CC * dunif(y))) { 
+      accepted <- accepted+ 1
+      x[accepted] <- y
+      }
+    }
+  print(paste('Acceptance proportion: ', round(n / iter * 100,4), '%'))
+  return(x)
+}
+
+
+```
+
+
+
+
+We will finally test in for some parameter choices: $(\alpha, \beta) \in \{(1,1), (5,1), (1,5), (10,10)\}$
+
+```{r, echo=FALSE}
+library(ggplot2)
+library(gridExtra)
+
+params <-list(c(1,1), c(5,1), c(1,5), c(10,10))
+for (param in params) {
+  alpha <- param[1]; beta <- param[2];
+  print(paste('Alpha = ', alpha, ', Beta = ', beta))
+  y <- beta_accept_rej(1000, alpha, beta)
+  qqplot(qbeta(ppoints(1000), alpha, beta), y, xlab="Theoretical Quantiles", ylab= "Sample Quantiles", main = paste('QQ-plot (alpha, beta) = (', alpha, ',', beta, ')'))
+  abline(a=0, b=1, col='green')
+}
+
+```
+The QQ plots show that the random sample follows a Beta distribution with the selected parameters. However, the acceptance proportions are rather low and decrease as $c = \max(\alpha, \beta)$ grows, which corresponds to the growth of the distribution parameters. The shape of the density of the Beta distribution makes it difficult to choose any other proposal distribution than our choice.
+
+
+
+
+
+
+
+
