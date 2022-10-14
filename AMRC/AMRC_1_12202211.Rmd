@@ -1,0 +1,170 @@
+---
+title: "Exercice n°1"
+subtitle: "Advanced Methods for Regression and Classification"
+author: "Grégoire de Lambertye"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+
+# Data pre-treatement 
+
+The exercise is based on the college dataset from ISLR. 
+
+```{r, echo=TRUE}
+#import the dataset 
+data(College,package="ISLR")
+attach(College)
+invisible(na.omit(College))
+```
+
+This dataset contains 18 different information about 777 colleges, we will try to predict the *Apps* data, i.e. the number of applications received, using the remaining variables except of the variables *Accept* and *Enroll*.
+```{r}
+College <- subset(College,select=-c(Accept, Enroll))
+
+```
+
+No preprocessing seems needed 
+
+
+# Splitting data 
+```{r, echo=TRUE}
+# randomly split into training and test data:
+set.seed(12202211)
+n <- nrow(College)
+train_index <- sample(1:n,round(n*2/3))
+training_set <- College[train_index,]
+testing_set <- College[(1:n)[-train_index],]
+```
+
+
+# Creating the full (linear) model 
+## task a
+
+```{r, echo=TRUE, fig.show="hold", out.width="50%"}
+full_model <- lm(training_set$Apps~., data = training_set)
+summary(full_model)
+plot(full_model)
+```
+Thanks to the summary, we can assum that the best variables to explain the amount of application recieved are :     
+
+* p-value < 0.001
+  + Grad.Rate Expend 
+  + Expend
+  + Perc.alumni 
+  + Room.Board 
+  + F.Undergrad (pvalue < 0.001)
+* p-value < 0.01
+  + Top10perc 
+  + Private 
+* p-value < 0.1
+  + Personal 
+  
+### Residuals vs Fitted
+This plot shows if the hyptothesis of a linear combinaison of the variable is a good assumption. It could be a non linear relation.  
+We have a pretty nice repartition of our point around a straight horizontal line. This plot assert the credibility of the linear model hypothesis. 
+
+### Normal QQ
+This plot shows if our residuals are normally spread around our linear model. They follow the theoric line wich is good. We can see some deviance for the extreme points but the residuals look normaly spreaded. 
+
+### Scale-Location
+This plot shows if residuals are spread equaly along the ranges of predictors. We have a straigth line but it isn't very horizontal, this mean the assumption of homoscedasticity is not fuly satisfied. Our model tend to predict higher values for ther highest ones and lower values for the lowest one. 
+
+### Residuals vs Leverage 
+This plot shows if some outlier are influencial in our linear model. Those potential outlier are located in the upper and bottom right corner. Except from the Brigham Young University at Provo, our point are looking very nice. For the *problematic* point, it remain closer to the other data than the Cook's distance, by this way it shouldn't be excluded.   
+    
+The model assumption seems good for the Apps prediction. 
+
+## Task: b
+
+```{r}
+X <- model.matrix(training_set$Apps~., data = training_set)
+B <- solve(t(X)%*%X) %*% t(X) %*% training_set$Apps
+
+print(B)
+```
+How is R handling binary variables (Private), and how can you
+interpret the corresponding regression coefficient?
+
+### How is R handling binary variables ?   
+For binary variable (or dummy variables) like Private in our dataset, R generate a new variable: 
+$$
+variableYess = \left\{ 
+\begin{array}{ll}
+  1 & \mbox{if  True }  \\
+  0 & \mbox{if  False } 
+\end{array}
+\right.
+$$
+The \hat{\Beta} can now be computed as every variable. 
+
+### How can you interpret the corresponding regression coefficient?
+The corresponding regression coefficient is *-6.729479e+02* It can be interpreted as the factor that should be applied to the residuals corresponding value to predict the Apps value. This means that for 2 similar colleges, one private and one not, the private college will receive about 600 fewer applications 
+
+## Task: c 
+
+```{r}
+plot(full_model$residuals~full_model$fitted.values)
+train_predict <- predict(full_model, newdata = training_set)
+test_predict <- predict(full_model, newdata = testing_set)
+plot(train_predict, training_set$Apps)
+plot(test_predict, testing_set$Apps)
+
+```
+
+## Task d
+
+```{r}
+
+train_rmse <- sqrt(mean((training_set$Apps-train_predict))^2)
+test_rmse <- sqrt(mean((testing_set$Apps-test_predict))^2)
+train_rmse
+test_rmse
+
+```
+The rmse is lot bigger for the testing set that mean our model in not very representative and overfit our training set too much. 
+
+# Reduce model 
+
+```{r}
+reduce_dataset <- subset(College,select=-c(Top25perc, P.Undergrad, Outstate, Books, PhD, Terminal, S.F.Ratio))
+
+reduce_model <- lm(reduce_dataset$Apps~., data=reduce_dataset)
+summary(reduce_model)
+```
+## Task a:
+All the variable from the new model are significant. This not an expected behaviour. Some variable ar ... 
+
+
+## Task b:
+```{r}
+plot(reduce_model$residuals~reduce_model$fitted.values)
+reduce_predict <- predict(reduce_model, newdata = reduce_dataset)
+plot(reduce_predict, reduce_dataset$Apps)
+```
+
+## Task c:
+```{r}
+reduce_rmse <- sqrt(mean((reduce_dataset$Apps-reduce_predict))^2)
+reduce_rmse
+```
+We would expect a higer value for the rsme thanks we have less variable to explain it. 
+
+## Task d: 
+```{r}
+full_anova <- anova(full_model)
+reduce_anova <- anova(reduce_model)
+
+full_anova
+reduce_anova
+```
+Anova is better in the 1st case 
+
+```{r}
+1166421322-2855129087    
+```
+
+# 3 
+
+
+
+</div></pre>
