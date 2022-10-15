@@ -1,0 +1,305 @@
+---
+title: 'Exercise 1: Variance Estimation'
+author: "Joan Salvà"
+date: "October 2022"
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+subtitle: Advanced Methods for Regression and Classification
+---
+&nbsp;
+
+For this assignment we willl use the dataset *College* from the package `ISLR`. 
+
+```{r, results='hold'}
+data(College, package='ISLR')
+
+print(paste('Total number of observations:', nrow(College)))
+print(paste('Number of rows without missing data:', nrow(na.omit(College))))
+
+library(data.table)
+df <- setDT(College)
+```
+We won't have to worry about missing data because there is none of them in the table. We also converted the table to a `data.table` object and renamed it to `df` 
+
+**Goal**: Find a Linear Model that predics the variable *Apps*, i.e. the number of applications received, using the remaining variables except for *Accept* and *Enroll*.
+
+We need to split our into train and test datasets. We can also define a function that given a model trained on the train dataset, evaluates the performance on the test data.
+```{r}
+# Make this example reproducible
+set.seed(1)
+
+# Do not use Accept and Enroll
+out_of_model <- c('Accept', 'Enroll')
+
+# Use 70% of dataset as training set and 30% as test set
+sample <- sample(c(TRUE, FALSE), nrow(df), replace=TRUE, prob=c(2/3,1/3))
+train  <- df[sample, !..out_of_model]
+test   <- df[!sample, !..out_of_model]
+
+evaluate_on_set <- function(mod, set) {
+  
+  s <- sqrt(
+    mean((predict(mod, set) - set$Apps)^2)
+  )
+  return(s)
+}
+```
+
+
+## Full model
+In this section we will estimate the full regression model.
+
+### 1.a: Using `lm` to compute the estimator
+
+```{r}
+mod <- lm(train$Apps ~ ., train)
+
+```
+**Checking the model assumptions**:
+We want to check that the residuals have a normal distribution in order to be able to rely on the tests for the importance of variables and confidance interval for the estimate.
+
+We will do that by plotting the distribution of the residuals through a histogram, and assessing the distribution similarity with a Normal distribution using a QQ-plot.
+
+```{r}
+
+hist(mod$residuals, breaks = 50, main = 'Residuals distribution')
+
+qqnorm(mod$residuals)
+qqline(mod$residuals)
+```
+The histogram clearly suggests that the residuals are normally distributed. The QQ-plot provides more information: the shape of the reminds of a Normal distribution but it would be a fat-tailed one. We can tell that because when $x < -2$, points fall under the QQ-line (meaning our sample contains the first quantiles in lower values than the standard normal distribution), and when $x > 2$, points fall over the line. 
+
+**Feature contribution to the model**: 
+
+```{r}
+summary(mod)
+
+```
+
+The p-values of the test $\beta_i = 0 \text{ vs } \beta_i \neq 0$ indicate that and variables *PrivateYes, P.Undergrad, F.Undergrad, Room.Board, Expend, Grad.Rate* have an important contribution in explaining the target variable. The intercept, *Top10perc*, and *perc.Alumni* also pass the test (taking $\alpha = 0.05$) but show less contribution to the model. The variable *Outstate* barely makes the cut, and all the other show no impact in the model.
+
+
+### 1.b: Manual computation the estimator
+By using the Least Squares in Matrix Notation formula, we get the exact same regression coefficients as in *1.a*.
+
+```{r}
+X <- model.matrix(train$Apps ~ ., train)
+
+solve(t(X) %*% X) %*% t(X) %*% train$Apps
+```
+
+**How are binary variables treated by R?**
+
+The previous matricial formula works only for matrices with numerical entries. Therefore, a preprocessing step is needed in order to transform binary or in general categorical variables to numerical.
+
+If it is a categorical variable with two levels (binary as *Private* in our model), R simply maps the two levels to $\{0, 1 \}$. If it was a categorical variable with $L\geq 3$ levels, R by default transforms the variable into $L-1$ different variables that encode the relative difference between some base level and the $L-1$ others.  
+
+Note that when we call `model.matrix`, R is doing this categorical to numerical transformations as well, so our matrix operations work without problems.
+
+The function `contrasts` shows the transformations that R is applying.
+
+```{r}
+contrasts(train$Private)
+```
+Therefore, the coefficient $\beta_{\text{Private}}$ is the factor that multiplies the following variable: $1_{\text{Private = 'Yes'}}$. That leaves the following property: $\text{Prediction}(x, \text{Private = 'Yes'}) = \text{Prediction}(x, \text{Private = 'No'}) + \beta_{\text{Private}}$, assuming x contains the same fixed value for all features except *Private*.
+
+
+### 1.c: Prediction analysis
+
+**Train data**
+```{r}
+plot(train$Apps, predict(mod, train), xlab = 'Real value', ylab = 'Prediction', 
+     main = 'Real values vs predictions (train data)')
+abline(a=0, b=1)
+```
+
+**Test data**
+```{r}
+plot(test$Apps, predict(mod, test), xlab = 'Real value', ylab = 'Prediction', 
+     main = 'Real values vs predictions (test data)')
+abline(a=0, b=1)
+
+
+```
+Our model does a good job predicting the target variable. It is worth noting that the distribution of the target variable is not uniform (see histogram below)
+
+```{r, echo=FALSE}
+hist(df$Apps, breaks = 30, main = 'Histogram of Apps', xlab = 'Apps')
+```
+
+The predictions are better in the best represented ranges of the sample, and the prediction accuracy decays as the frequency of the data points decreases. In the test dataset, there is a very clear outlier that is underpredicted. We should check if we are trying to do inference on a point that is very far from the range of values used for training the model.
+For the moment, what we will do will be excluding this point from the test dataset.
+```{r, results='hold'}
+test <- test[test$Apps < 30000]
+```
+
+**Evaluating the fit**:
+The *R-squared* and *Adjusted R-squared* take high values and in most domains of application they would be considered appropriate. One can interpret that roughly 84% of the variance found in the response variable can be explained by the predictor variables.
+
+### 1.d: RMSE
+
+```{r, results='hold'}
+print('RMSE (train):')
+print(evaluate_on_set(mod, train))
+print('RMSE (test):')
+print(evaluate_on_set(mod, test))
+```
+
+Note that we still do not have a way to tell if the RMSE is high or low because the values obtained are related to the scale of the target variable). For the moment we can only tell that it looks that the model is slightly overfitting: the error is higher in the test than in train. Removing unimportant variables as we will do later could help solve this problem.
+
+
+## Reduced model
+In this section we will exclude the input variables that were not significant according to the results of the full model.
+
+### 1.a: New Reduced Linear model
+
+We will consider $\alpha = 0.05$ to be our significance level.
+```{r}
+alpha <- 0.05
+# Define non-significant features
+to_drop <- c(names(train)[summary(mod)$coeff[,4] >= alpha])
+
+
+reduced_mod <- lm(train$Apps ~ ., train[, !..to_drop])
+summary(reduced_mod)
+
+```
+In this case, all features show significance in explaining the target variable. Note, however, that the significance levels have changes (e.g. *Top10perc* sees his significance increased).
+
+But in general, one can't expect all significant variables of full model A to be all significant in model B. This is closely related to the confounding phenomena: it is the change in the model behavior in terms of significance due to the omission or incorporation of variables. The cause is that this omitted confounding variable is correlated with at least one independent variables that is in the regression model.
+
+### 1.b Fit and predictions
+**Train data**
+```{r}
+plot(train$Apps, predict(reduced_mod, train), xlab = 'Real value',
+     ylab = 'Prediction', main = 'Real values vs predictions (train data)')
+abline(a=0, b=1)
+```
+
+**Test data**
+```{r}
+plot(test$Apps, predict(reduced_mod, test), xlab = 'Real value', 
+     ylab = 'Prediction', main = 'Real values vs predictions (test data)')
+abline(a=0, b=1)
+
+
+```
+As in the full model, predictions and actual values form a straight line suggesting a good prediction performance. 
+
+**Evaluating the fit**:
+
+The *R-squared* and *Adjusted R-squared* take again high values. We know that the $R^2$ never decreases when we add new variables to the model, i.e it can only decrease when reducing the number of variables. In our case, we go from 0.8409 to 0.8385. the *Adjusted R-squared* does not depend on the number of variables and it could be the case that it increases when we reduce the number of variables. But it's not our case (0.8362 to 0.836). However, the decrease amount is very low and we can conclude that the amount of information that we have taken out from the model had very low explanatory power.
+
+### 1.c Comparison of the RMSE
+```{r, echo=FALSE}
+
+evaluations <- c(
+  evaluate_on_set(mod, train),
+  evaluate_on_set(mod, test),
+  evaluate_on_set(reduced_mod, train),
+  evaluate_on_set(reduced_mod, test)
+)
+
+table <- data.frame(Dataset=c('train', 'test', 'train', 'test'), 
+                    Model=rep(c('full', 'reduced'), each=2), RMSE=evaluations)
+knitr::kable(table, caption = "Root Mean Square Error table")
+
+```
+We can still see some overfitting in the new model. Reducing the number of variables will probably make our model more robust but we could not expect the RMSE to decrease because we are removing variables from the model.
+
+### 1.d Analysis of Variance
+
+```{r}
+anova(reduced_mod, mod)
+```
+The `anova` functions computes the Analysis of Variance for one or more fitted model objects. It basically tests whether a more complex model is significantly better at capturing the data than the simpler model. If the resulting p-value is not sufficiently low, we should favor for the simpler model.
+
+In our case, we can see the full model has 7 more degrees of freedom, but the F-test ($p = 0.3709 > \alpha = 0.5$) concludes that the full model does not fit the data in such a way that justifies its increased complexity. Thus, the simpler or reduced model is preferred.
+
+
+# Variable Selection through stepwise regression.
+In this section we will use a variable selection algorithm to find the optimal reduced model.
+
+
+**Backwards stepwise regression**
+```{r}
+null_mod <- lm(train$Apps ~ 1, data = train)
+full_mod <- lm(train$Apps ~ ., data = train)
+
+backward <- step(lm(train$Apps ~ ., data = train), direction = 'backward', 
+                 scope=list(lower = null_mod, upper = full_mod))
+```
+
+**Forward stepwise regression**
+```{r}
+forward <- step(lm(train$Apps ~ 1, data = train), direction = 'forward', 
+                scope=list(lower = null_mod, upper = full_mod))
+```
+```{r}
+summary(forward)
+summary(backward)
+```
+The two stewise regression methods choose the same subset of variables and therefore the regression coefficients are the same. Note that this is not necessarily true and different subsets of variables could be selected with different directions. Let's evaluate this last model as we did with the full model and reduced model.
+
+**Train data**
+```{r}
+plot(train$Apps, predict(forward, train), xlab = 'Real value', 
+     ylab = 'Prediction', main = 'Real values vs predictions (train data)')
+abline(a=0, b=1)
+```
+
+**Test data**
+```{r}
+plot(test$Apps, predict(forward, test), xlab = 'Real value', 
+     ylab = 'Prediction', main = 'Real values vs predictions (test data)')
+abline(a=0, b=1)
+```
+
+
+Visual inspection does not provide much insights given the plots above. Like in the other models, the real values and predictions are fairly aligned.
+When it comes to *R-squared* and *Adjusted R-squared* values, the new model does better than the two others. The R-squared is dependant on the number of variables, so we cannot compare it to the other models. But in this case, we have that the new model the best *Adjusted R-squared* among the three, as we can see in the following table.
+
+```{r, echo=FALSE}
+r <- c(
+  summary(mod)$r.squared,
+  summary(reduced_mod)$r.squared,
+  summary(forward)$r.squared
+)
+
+adj <- c(
+  summary(mod)$adj.r.squared,
+  summary(reduced_mod)$adj.r.squared,
+  summary(forward)$adj.r.squared
+)
+
+table <- data.frame(model=c('full', 'reduced', 'stepwise'), r_squared=r, adjusted_r_squared=adj)
+colnames(table) <- c('Model', 'R-squared', 'Adjusted R-squared')
+knitr::kable(table, caption = "Adjusted R-squared table")
+```
+We can finally take a look at the RMSQ error for this model extending the table that we have previously seen:
+```{r, echo=FALSE}
+
+evaluations <- c(
+  evaluate_on_set(mod, train),
+  evaluate_on_set(mod, test),
+  evaluate_on_set(reduced_mod, train),
+  evaluate_on_set(reduced_mod, test),
+  evaluate_on_set(forward, train),
+  evaluate_on_set(forward, test)
+)
+
+table <- data.frame(Dataset=c('train', 'test', 'train', 'test', 'train', 'test'), Model=rep(c('full', 'reduced', 'stepwise'), each=2), RMSE=evaluations)
+knitr::kable(table, caption = "Root Mean Square Error table")
+```
+The new model outperforms the reduced model in terms of RMSE but falls slightly underperforms the full model. The light overfitting is still present. 
+
+We can finally do the Anova analysis one more time to finally conclude which model should we keep:
+```{r}
+anova(forward, mod)
+```
+Results show that the addition of the remaining variables to the simpler model (Model 1 in the Anova table above) does not translate into a sufficient increase in the ability of the model to explain the target variable. According to this, we should keep the model extracted from the stepwise regression. Let's recall that the adjusted R-squared value also supports this decision.
+
+
+</div></pre>
