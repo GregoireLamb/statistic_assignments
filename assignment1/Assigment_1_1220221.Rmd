@@ -9,23 +9,22 @@ header-includes:
 output: pdf_document
 ---
 
-# I Variance calculation
+# I Task 1: Implementation  
+## I.1 Algorithms 
+The aim of this first exercise is to approach the difficulties of computer simulation and to get used to R and R Markdown. In order to illustrate these problems, we will use the variance calculation through 4 different algorithms and the “var” function provided by R.    
+As starting point, we will use these lines to include libraries and create our datasets.
 
-The aim of this first exercice is to approache the difficulties of computer simulation and to get used to R and R Markdown. 
-In order to illustrate these problems we will use the variance calculation through 4 different algorithms and the "var" function provided by R.
-
-As starting point, we will use theese lines to include libraries and create our datasets
 
 ```{r, echo=TRUE}
 library(microbenchmark)#Allows the use of the microbenchmark library 
 
-set.seed(11220221)#Create random data  
+set.seed(11220221)#Set the seed 
 x1 <- rnorm(100)
 x2 <- rnorm(100, mean=1000000)
-x3 <- rnorm(100, mean=0.0000001)
+x3 <- rnorm(100, mean=0.000001)
 ```
 
-## I.1 Algorithme n°1: (two-pass algorithme)
+### I.1.1 Algorithme n°1: (two-pass algorithme)
 
 The first algorithm follows the traditional variance formula: $s_n^2 = \frac{1}{(n-1)} \sum_{i=1}^n (x_i - x_n)^2$.
 It needs to read all the data twice, once to calculate the mean and once to calculate the variance. 
@@ -51,9 +50,9 @@ precise <- function(x) {
 }
 ```
 
-## I.2 Algorithme n°2: (one-pass algorithme)
+### I.1.2 Algorithme n°2: (one-pass algorithme)
 
-The second algorithm use the Variance Decomposition princips : $s_n^2 = \frac{1}{(n-1)} (\sum_{i=1}^n x_i^2 - \frac{1}{n} (\sum_{i=1}^n x_i)^2)$.
+The second algorithm use the Variance Decomposition principle : $s_n^2 = \frac{1}{(n-1)} (\sum_{i=1}^n x_i^2 - \frac{1}{n} (\sum_{i=1}^n x_i)^2)$.
 This allows the algorithm to read the data only once. 
 
 
@@ -76,7 +75,7 @@ excel <- function(x) {
 
 
 
-## I.3 Algorithme n°3: (shifted one-pass algorithme)
+### I.1.3 Algorithme n°3: (shifted one-pass algorithme)
 
 The third algorithm works with the Scale Invariance property : $s_x^2 = s_{x-c}^2$ with c a constant. 
 That gives us the following formula : 
@@ -103,10 +102,10 @@ shifted <- function(x, c=x[1]) {
 
 ```
 
-### Consider what would be a good value for c ? 
-Considering the compututation pinciples of a computer, it would be interesting to work with small number (i.e: approaching 0) so giving c the mean value should be interessting. 
+*Consider what would be a good value for c ?*    
+Considering the condition number formula, related to the algorithm robustness, it would be interesting to choose a c-value close to the mean.  
 
-## I.4 Algorithme n°4: (online algorithme)
+### I.1.4 Algorithme n°4: (online algorithme)
 
 The last algorithm is based on the online calculation of the variance : 
 
@@ -117,7 +116,7 @@ $$S_n^2 = \frac{n-2}{n-1}S_{n-1}^2 + \frac{(x_n-\bar{x}_{n-1})^2}{n}, \quad n >1
 
 ```{r, echo=TRUE}
 online <- function(x) {
-  #initalisation 
+  #initialization 
   n <- 2
   mean <- (x[1]+x[2])/2
   variance <- (x[1]-mean)^2 + (x[2]-mean)^2
@@ -132,7 +131,8 @@ online <- function(x) {
 }
 ```
 
-# II Comparison
+
+## I.2 Wrapper  
 
 To facilitate the comparison between the different algorithms we will use a wrapper function that call every algorithm
 ```{r,echo=TRUE}
@@ -140,23 +140,22 @@ variances <- function(x){
   return(c(precise(x), excel(x), shifted(x), online(x),var(x)))
 }
 ```
-First we will examine the result obtained by each algorithm on the same two datasets we have set up earlier.
+We will examine the result obtained by each algorithm on the same two datasets we have set up earlier.
 
 ```{r,echo=FALSE}
 res <- matrix(c(variances(x1),variances(x2)), ncol=5, byrow=TRUE)
 res <- as.table(res)
-col_name <- c("precise", "excel", "shifted", "online", "var")
-raw_name <- c("x1","x2")
-rownames(res) <- raw_name
-colnames(res) <- col_name
+rownames(res) <- c("x1","x2")
+colnames(res) <- c("precise", "excel", "shifted", "online", "var")
 knitr::kable(res, caption = "Variance calulation")
 ``` 
 
 It appears that the excel algorithm isn't robust. For samples with big means it doesn't return a precise value for the variance and differs from the others.  
 
+# II Task 2: Comparison 
 ## II.1 Computation time
 
-Let's focus on the computation time, we will run each algoritm 100 times thank to the microbenchmark function using the x1 dataset.
+Let's focus on the computation time, we will run each algorithm 100 times thank to the microbenchmark function using the x1 dataset.
 
 ```{r, echo = TRUE,  fig.show="hold", out.width="50%"}
 microx1 <- microbenchmark(precise(x1), excel(x1), shifted(x1), online(x1),var(x1),  times=100)
@@ -167,10 +166,10 @@ boxplot(microx1, main="Computation times obtained with x1")
 boxplot(microx2, main="Computation times obtained with x2")
 ```
 
-Thank to the boxplot it clearly appears that the excel algorithm is the speediest one and the online one is the worth. By the way, switching x1 dataset to x2 dataset doesn't impact the computational time so much and doesn't change the ranking either. 
+Thanks to the boxplot it clearly appears that the excel algorithm is the speediest one and the online one is the worth. By the way, switching x1 dataset to x2 dataset doesn't impact the computational time so much and doesn't change the ranking either. 
 
 
-### Would you know another way in R to compare computing times?
+*Would you know another way in R to compare computing times?*    
 Recording computing time in R can also be done with the system time :
 ```{r, echo=TRUE}
 start_time <- Sys.time()
@@ -180,11 +179,14 @@ computation_time = end_time-start_time
 print(computation_time)
 ```
 
-## II.2 Scale invariance property 
+# III Scale invariance property 
 
-Thanks to the scale invariance property, we can assume that $s_{x}^2 = s_{x+c}^2$ with c a constant. We can investigate this property with the shifted algorithm by changing the c-value. 
-Therefor we will use the *condition number*: $S = \sum_{i=1}^n (x_i - x_n)^2 = (n-1) * s_n^2$. It gives a idea of how a small change in the inputs will causes a change in the output. The closet is k to 1 the best it is because it would mean our variance remain trustful with some noise errors in the input.  
-### Influence of the c-value on the condition number
+Thanks to the scale invariance property, we can assume that $s_{x}^2 = s_{x+c}^2$ with c a constant. We can investigate this property with the shifted algorithm by changing the c-value.    
+Therefor we will use the *condition number*: 
+$$S = \sum_{i=1}^n (x_i - x_n)^2 = (n-1) * s_n^2$$   
+It gives a idea of how a small change in the inputs will causes a change in the output. The closet is k to 1 the best it is because it would mean our variance remain trustful with some noise errors in the input.
+
+## Influence of the c-value on the condition number
 
 ```{r, echo=TRUE}
 condition_number <- function(mean, n , S){
@@ -192,7 +194,7 @@ condition_number <- function(mean, n , S){
 }
 ```
 
-To observe the c_value influence, we will compute the condition number with 10 c-values tooked between the min and the max of the data set and we will also compute the condition number with the mean as c-value.
+To observe the c_value influence, we will compute the condition number with 10 c-values between the min and the max of the data set and we will also compute the condition number with the mean as c-value.
 
 ```{r,echo=TRUE, fig.show="hold", out.width="50%"}
 c_val_influence <- function(x){
@@ -204,7 +206,7 @@ c_val_influence <- function(x){
   for(i in 0:length(c_list)){
     mean <- mean(x) - c_list[i]
     n <- 100
-    S <- shifted(x,c_list[i])*(n-1)
+    S <- var(x)*(n-1)
     condition_numb[1,i] <- c_list[i]
     condition_numb[2,i] <- condition_number(mean, n ,S)
   }
@@ -223,41 +225,23 @@ abline(v=mean(x2), col='red')
 legend("bottomright", "mean value", col="red", lty=1)
 
 ``` 
-As expected, the best condition number is obtained for the mean as c-value. 
+As expected, the smallest condition number is obtained for the mean as c-value. This can be interpreted as: the algorithm output is more stable with this c-value. So, the mean is the best c-value for the algorithm robustness.  
 
-### Influence of input changement on the variance with different c-value
-On the previous point, we shows that the c-value of the shifted variance algorithm influence the condition number. Since the condition number defines how a small change in the input impact the output, we can investigate the impact of this input changement on the variance value for different c-values.
+## III.1 Computation time 
+We will focus on the computation time of the shifted algorithm with different c-values.  
+```{r,echo=TRUE, fig.show="hold", out.width="50%"}
+micro_shifted <- microbenchmark(shifted(x2,mean(x2)-100000000000),shifted(x2,mean(x2)),shifted(x2,mean(x2)+100000000000),  times=100)
+knitr::kable(summary(micro_shifted), caption ="Computation times with different c-values using x2")
+boxplot(micro_shifted, main="Computation times with different c-values using x2",names = c("c=-1e11","c=0","c=1e11"))
 
-```{r, echo=TRUE, fig.show="hold", out.width="50%"}
-var_evolution <-function(x){
-  minimum <- min(x)
-  maximum <- max(x)
-  c_list <- seq(from=minimum, to=maximum, length.out=500)
-  pertubated_sample = x + rnorm(100,0)*0.0000001
-  variance <- c()
-  perturbed_variance <- c()
-  evolution<- c()
-  for( i in 0:length(c_list)){
-    variance <- append(variance, shifted(x,c_list[i]))
-    perturbed_variance <- append(perturbed_variance, shifted(pertubated_sample,c_list[i]))
-    evolution<- append(evolution, abs(perturbed_variance[i]-variance[i])/variance[i])
-  }
-  result <- data.frame(variance,perturbed_variance,evolution,c_list)
-  return(result)
-}
-
-data <- var_evolution(x1)
-plot(data$c_list,data$evolution, xlab = "c_values", ylab = "variance evolution", main = "Relative evolution of the variance with \nperturbed data and different c-values base on x1")
-abline(v = mean(x1), col="red")
-
-data <- var_evolution(x2)
-plot(data$c_list,data$evolution, xlab = "c_values", ylab = "variance evolution", main = "Relative evolution of the variance with  \nperturbed data and different c-values base on x2")
-abline(v = mean(x2), col="red")
+micro_shifted2<- microbenchmark(shifted(x1,mean(x1)-100000000000),shifted(x1,mean(x1)),shifted(x1,mean(x1)+100000000000),  times=100)
+knitr::kable(summary(micro_shifted2), caption ="Computation times with different c-values using x1")
+boxplot(micro_shifted2, main="Computation times with different c-values using x1", names = c("c=-1e11","c=0","c=1e11"))
 ```
-This plot confirms the plot previous graph. It shows that with a c-value close to the dataset mean the relative evolution of the shifted algorithm output is less important with small pertutbations in the input. The importance of the perturbation (1e-8 here) will impact all points in the same way.
 
+The c-value has a really weak influence on the computation time, Even by using big c-values, it doesn't clearly affect the computation times. 
 
-# 3 Condition number 
+# IV Task 4: Condition number 
 
 We will focus on the importance of the dataset's mean for the condition number
 ```{r, echo=TRUE}
@@ -268,7 +252,7 @@ res <- append(res,condition_number(mean(x3), 100,var(x3)*(100-1)))
 res <- as.data.frame(res, row.names=c('x1 mean=0','x2 mean=1 000 000','x3 mean=0.000 000 1'))
 knitr::kable(res , col.names="k", caption="Condition numbers for different dataset mean")
 ```
-We can assume that the condition number is pretty sensitive. Between the condition number of x1 (mean(x1)=0) and x3 (mean(x3)=0.000 000 1) we have a difference of 1e-2. 
 
+We can assume that the condition number is very sensitive. Between the condition number of x1 (mean(x1)=0) and x3 (mean(x3)=0.000001), there is a difference of 1e-2. We proved that the best best c-value for the condition number is the average of the dataset, i.e. having a data mean of 0 after the substation of the c-value. Any difference of 1/1000000 in this average has a direct impact on the number of conditions and the stability of the algorithm.
 
 </div></pre>
