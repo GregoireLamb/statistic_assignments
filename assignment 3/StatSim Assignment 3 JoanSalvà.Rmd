@@ -1,0 +1,207 @@
+---
+title: 'Assignment 3: Monte Carlo Simulation of areas'
+author: "Joan Salvà"
+date: "October 2022"
+output:
+  pdf_document: default
+  html_document:
+  df_print: paged
+subtitle: Statistical Simulation and Computerintensive Methods
+---
+
+
+# Exercise 1
+Consider the integral $$\int_{1}^b \exp(-x^3)dx$$
+
+### 1.1
+We use the uniform distribution to approximate the integral for $b=6$ using Monte Carlo integration.
+
+
+```{r, results = 'hold'}
+matrikelnummer <- 12223411
+set.seed(matrikelnummer)
+
+
+f <- function(x) {
+  exp(-x^3)
+}
+
+n <- 1e6
+b <- 6
+a <- 1
+
+x_sample <- runif(n, min=a, max=b)
+
+monte_carlo_integral <- mean(f(x_sample) * (b - a))
+numerical_integral <- integrate(f, lower = a, upper = b)
+
+print(paste('Monte Carlo:', monte_carlo_integral))
+print(paste('Numerical:'))
+numerical_integral
+
+```
+
+### 1.2
+We use the exponential distribution to approximate the integral for $b=\infty$. Remember that the distribution must have the same support as the integral domain. Let's shift the function to the left and choose the exponential function to sample.
+$$\int_{1}^\infty \exp(-x^3)dx = \int_{0}^\infty \exp(-(t + 1)^3)dt$$
+```{r, results = 'hold'}
+set.seed(matrikelnummer)
+
+n <- 1e6
+b <- Inf
+a <- 1
+
+x_sample <- rexp(n)
+
+monte_carlo_integral <- mean(f(x_sample + 1) / dexp(x_sample))
+numerical_integral <- integrate(f, lower = a, upper = b)
+
+print(paste('Monte Carlo:', monte_carlo_integral))
+print(paste('Numerical:'))
+numerical_integral
+
+```
+
+### 1.3
+Why is the second integral (1.2) better approximated by Monte Carlo than the first one (1.1)?
+
+The regions of the domain where $|f(x)|$ takes higher values are the ones that contribute more to the value of the integral. Therefore, we want these regions better represented in our sample. 
+
+In the first case, we used the uniform distribution which represents all regions equally. On the other hand, in the second case we sampled from the exponential distribution, which particularly has a higher density in the region $x \leq 1$. This happens to be the region that contributes the most to the value of the integral because of the shape of $f(x + 1)$:
+
+
+```{r, echo = FALSE}
+x <- seq(0, 5, 0.001)
+plot(x, exp(-(x + 1)^3), type='l', ylab = 'f(x + 1)')
+```
+
+
+# Exercise 2
+Now we will use Monte Carlo simulation to obtain the are enclosed by the graph of $x(t) = r(t) \cdot \sin(t), y(t) = r(t) \cdot \cos(t)$, where 
+$$r(t) = \exp(\cos(t)) - 2\cos(4\cdot t) - \sin(t/12)^5, \quad t \in [-\pi, \pi]$$
+
+### 2.1 
+Let's visualize the curve:
+
+```{r}
+r <- function(t) {
+  exp(cos(t))-2*cos(4*t)-sin(t/12)^5
+}
+
+t <- seq(-pi, pi, 0.0001)
+x <- r(t) * sin(t)
+y <- r(t) * cos(t)
+
+plot(x, y, type='l', col = 'orange')
+```
+
+
+### 2.2 
+Let's first create a function that will sample from the uniform distribution to create a two dimensional sample in the region $[-3,3]\times[-2, 3.5]$.
+```{r}
+sample_in_region <- function(n) {
+  x_sample <- runif(n, min = -3, max = 3)
+  y_sample <- runif(n, min = -2, max = 3.5)
+  
+  return(list('x'=x_sample, 'y'=y_sample))
+}
+```
+
+Let's generate an function that returns 1 if the point $(x,y)$ is enclosed in the graph of the figure above, 0 otherwise. The idea is to map the point to polar coordinates and then check if its radius is smaller than $r(t)$. 
+
+```{r}
+is_inside <- function(x, y) {
+  if (y > 0){
+    alpha <- 0
+  } else {
+    alpha <- pi
+  }
+  beta <- atan(x/y) + alpha
+  radius <- sqrt(x^2 + y^2)
+  if (r(beta) > 0 & (radius < abs(r(beta)))) {
+    # the point is in the positive part of r(t)
+    return(1)
+  } else if (r(beta+pi) < 0 & (radius < abs(r(beta + pi)))) {
+    return(1)
+  } else {
+    return(0)
+  }
+}
+```
+
+Let's finally test our indicator function to see that it can well separate the inside and outside points.
+
+```{r}
+library(ggplot2)
+n <- 1e5
+res <- sample_in_region(n)
+x_sample <- res$x; y_sample <- res$y
+ind <- logical(n)
+for (i in 1:n){
+  ind[i] <- is_inside(x_sample[i], y_sample[i])
+}
+
+df <- data.frame(x_sample, y_sample, ind)
+
+fig <- ggplot() + geom_point(data = df, aes(x=x_sample, y=y_sample, color = ind), 
+size = 0.05) + geom_path(aes(x=x, y=y)) + xlab('x') + ylab('y') + theme(legend.position = "none")
+
+print(fig)
+```
+
+
+### 2.3
+Now let's run the Monte Carlo simulation for $n = 10^2, 10^3, 10^4, 10^5$.
+
+```{r}
+percentage <- numeric(4)
+n_vector <- numeric(4)
+runtime <- numeric(4)
+
+for (i in 2:5){
+  n <- 10^i
+  n_vector[i - 1] <- n
+  
+  time_start <- Sys.time()
+  sample <- sample_in_region(n)
+  x_sample <- sample$x; y_sample <- sample$y
+  
+  ind <- logical(n)
+  for (j in 1:n){
+    ind[j] <- is_inside(x_sample[j], y_sample[j])
+  }
+  percentage[i-1] <- sum(ind) / n
+  df <- data.frame(x_sample, y_sample, ind)
+  
+  p <- ggplot() + geom_point(data= df, aes(x=x_sample, y=y_sample, 
+color = ifelse(ind, 'red', 'blue') ), size = 0.01) + xlab('x') + ylab('y') + ggtitle(paste("MC-Sim with n =", n))
+  print(p)
+  
+  runtime[i - 1] <- Sys.time() - time_start
+}
+```
+
+
+```{r, echo = FALSE}
+
+estimations <- percentage * (6 * 2.5)
+
+table <- data.frame(n=n_vector, Percentage=percentage, Estimation=estimations, Runtime=runtime)
+names(table) <- c('n', 'Inside %', 'Area estimation', 'Runtime [s]')
+knitr::kable(table, caption = "Results table")
+```
+
+In the table we can see that the algorithm converges around a value close to 5.9. The rungtime naturally increases as we increase the number of points of the simulation, but at the  reward that the quality of the estimation also increases.
+
+
+### 2.3 How does Monte Carlo simulation actually work?
+
+Monte Carlo simulation is a very simple method to approximate integrals and areas for functions whose analytical solutions are difficult to find or do not exist. In its most basic form, could be reduced to the following functioning: calculate the probability of a point to be under the function (if it's an integral) or inside the curve (if we are in a plane) or inside a 3-d volume (in the $\mathbb{R}^3$ space), and then multiply by the volume of the summation domain. 
+
+To estimate this probability, Monte Carlo evaluates our function on a random sample that represents the summation domain.
+
+This is particularly useful to compute integrals of functions whose primitives are not known or that are too complex to handle in a symbolic representation. One particular field where this is a applied is in financial mathematics. The Black Scholes equation leads to some integrals that define the prices and attributes of a particular derivative. But only the integrals for the most simple derivatives have analytical solutions. For any other more complicated derivative, one usually makes use of Monte Carlo approximations.
+
+Moreover, integration approximation is not the only application of the Monte Carlo approximation idea. In this lecture we've seen applications in hypothesis testing, and in the course Algorithms, we've seen Monte Carlo randomized Optimization Algorithms.
+
+</div></pre>
