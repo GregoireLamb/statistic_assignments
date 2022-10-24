@@ -192,9 +192,14 @@ It gives a idea of how a small change in the inputs will causes a change in the 
 condition_number <- function(mean, n , S){
   return(sqrt(1+(mean^2*n)/S))
 }
+
+condition_number_shifted <- function(mean, n , S, c){
+  return(sqrt(1+((mean-c)^2*n)/S))
+}
 ```
 
-To observe the c_value influence, we will compute the condition number with 10 c-values between the min and the max of the data set and we will also compute the condition number with the mean as c-value.
+
+To observe the c_value influence, we will compute the condition number with 100 c-values between the min and the max of the data set and we will also compute the condition number with the mean as c-value.
 
 ```{r,echo=TRUE, fig.show="hold", out.width="50%"}
 c_val_influence <- function(x){
@@ -204,11 +209,9 @@ c_val_influence <- function(x){
   c_list <- sort(append(c_list, mean(x)))
   condition_numb <- matrix(nrow = 2, ncol = 101)
   for(i in 0:length(c_list)){
-    mean <- mean(x) - c_list[i]
-    n <- 100
-    S <- var(x)*(n-1)
+    S <- var(x)*(length(x)-1)
     condition_numb[1,i] <- c_list[i]
-    condition_numb[2,i] <- condition_number(mean, n ,S)
+    condition_numb[2,i] <- condition_number_shifted(mean(x), length(x), S, c_list[i])
   }
   return(condition_numb)
 }
@@ -220,14 +223,14 @@ plot(cond_numb_x1[2,], x=cond_numb_x1[1,], main="Influence of the c-value on the
 abline(v=mean(x1), col='red')
 legend("bottomright", "mean value", col="red", lty=1)
 
-plot(cond_numb_x2[2,], x=cond_numb_x2[1,], main="Influence of the c-value on the condition number (x1 dataset)", type='o',xlab="C_values", ylab="Condition number")
+plot(cond_numb_x2[2,], x=cond_numb_x2[1,], main="Influence of the c-value on the condition number (x2 dataset)", type='o',xlab="C_values", ylab="Condition number")
 abline(v=mean(x2), col='red')
 legend("bottomright", "mean value", col="red", lty=1)
 
 ``` 
 As expected, the smallest condition number is obtained for the mean as c-value. This can be interpreted as: the algorithm output is more stable with this c-value. So, the mean is the best c-value for the algorithm robustness.  
 
-## III.1 Computation time 
+## III.1 Influence of the c-value on the computation time
 We will focus on the computation time of the shifted algorithm with different c-values.  
 ```{r,echo=TRUE, fig.show="hold", out.width="50%"}
 micro_shifted <- microbenchmark(shifted(x2,mean(x2)-100000000000),shifted(x2,mean(x2)),shifted(x2,mean(x2)+100000000000),  times=100)
@@ -241,7 +244,7 @@ boxplot(micro_shifted2, main="Computation times with different c-values using x1
 
 The c-value has a really weak influence on the computation time, Even by using big c-values, it doesn't clearly affect the computation times. 
 
-# IV Task 4: Condition number 
+# IV Task 4: Impact of the ample mean on the condition number 
 
 We will focus on the importance of the dataset's mean for the condition number
 ```{r, echo=TRUE}
