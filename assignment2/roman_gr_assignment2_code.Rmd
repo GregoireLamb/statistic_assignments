@@ -3,6 +3,7 @@ title: "Assignment 2"
 subtitle: "Random Number Generation through CDF and acceptance-rejection sampling"
 author: "Roman Grebnev"
 date: "2022-10-25"
+toc: true
 output: pdf_document
 ---
 
