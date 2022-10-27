@@ -36,7 +36,7 @@ congruential_gen <- function(n,m,a,c=0,x0)
 
 ```
 That we can observe here 
-```{r, echo = FALSE, fig.dim=c(10,6)}
+```{r, fig.align='center', echo = FALSE}
 plot(congruential_gen(100,178,3,44,72), main="Random number generator", ylab="Random values")
 ```
 The modulus number m as a huge influence on the sequence and act as a "maximal number generated" before the mapping between 0 and 1. It also a major parameter for the sequence length. With a small m, it's easy to recognize the sequence quickly: 
@@ -147,12 +147,11 @@ beta22_approach <- function(n, alpha=2, beta=2){
       x[accepted] <- y
       }
     }
-  print(paste('Acceptance proportion: ', round(n / iter * 100,4), '%'))
-  return(x)
+  return(round(n / iter * 100,4))
 }
 
-invisible(beta22_approach(1000))
 
+print(paste('Acceptance proportion: ', beta22_approach(1000), '%'))
 ```
 
 We will finally test in for some parameter choices: $(\alpha, \beta) \in \{(1,1), (5,1), (1,5), (10,10)\}$
@@ -193,5 +192,19 @@ for (param in params) {
 }
 
 ```
-The QQ plots show that the random samples follow Beta distributions with the selected parameters. However, the proportion of accepted point decrease as C grows. Using the maximum of the distribution for the C value couldn't help us in every situation (alpha = 5 & beta = 1 for example).
+The QQ plots show that the random samples follow Beta distributions with the selected parameters. However, the proportion of accepted point decrease as C grows. Using the maximum of the distribution for the C value is a necessity with our distribution for situations like alpha = 5 & beta = 1. We could try other distribution but the shape of the gamma distribution make difficult to find a good distribution for every couple of parameters.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 

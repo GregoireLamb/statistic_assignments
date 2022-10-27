@@ -1,0 +1,205 @@
+---
+title: "Exercice n°4"
+subtitle: "Sample distribution and Central Limit Theorem"
+author: "Grégoire de Lambertye"
+date: "`r Sys.Date()`"
+header-includes:
+   - \usepackage{amsmath,amssymb}
+   - \usepackage[utf8]{inputenc}
+output: pdf_document
+---
+
+# I Task n°1 :
+
+We consider the 12 sample data points: 4.94 5.06 4.53 5.07 4.99 5.16 4.38 4.43 4.93 4.72 4.92 4.96
+
+## I.1 How many possible bootstrap samples are there, if each bootstrap sample has the same size as the original?
+Two bootstrap sample are considered equals if only the order of the point change from one bootstrap sample to another.
+With 12 point we can have up to XX different bootstrap samples: $b= n-1*n-1$
+
+## I.2 Compute the mean and the median of the original sample.
+```{r, echo=TRUE}
+data <- c(4.94, 5.06, 4.53, 5.07, 4.99, 5.16, 4.38, 4.43, 4.93, 4.72, 4.92, 4.96)
+
+original_mean <- mean(data)
+original_median <- median(data)
+```
+The mean of the original sample is `r original_mean` and the median is `r original_median`
+
+## I.3 Create 2000 bootstrap samples and compute their means.
+We create 2000 samples with the same length than the original sample. 
+```{r}
+set.seed(12202211)
+m <- 2000
+samples <- replicate(m, sample(data, size=12, replace=TRUE))
+means <- numeric(m)
+for(i in 0:m){
+  means[i] <- mean(samples[,i]) 
+}
+```
+
+### Compute the mean on the first 20.0.0 bootstrap means.
+```{r}
+mean_of_mean <- function(n){
+  sum <- 0
+  for(i in 1:n){
+    sum <- sum + mean(samples[,i])
+  }
+  return(sum/n)
+}
+mean_20b <- mean_of_mean(20)
+mean_200b <- mean_of_mean(200)
+mean_2000b <- mean_of_mean(2000)
+means_first_sample <- c(mean_20b, mean_200b, mean_2000b)
+```
+We have the following result :
+
+ number of sample |     20     |      200      |  2000 
+ ---------------- | ---------- | ------------- | -------------- 
+ mean             |`r mean_20b`| `r mean_200b` | `r mean_2000b`
+
+### Visualise the distribution of all the different bootstrap means to the sample mean. Does the Central Limit Theorem kick in?
+```{r}
+par(mar = c(5, 4, 4, 4) + 0.3)              # Additional space for second y-axis
+plot(hist(means), main="")                           # Create first plot
+par(new = TRUE)                         # Add new plot
+plot(density(means), axes = FALSE, xlab = "", ylab = "", col='blue', main="") 
+axis(side = 4)   
+abline(v=original_mean, col='orange')
+```
+title + legende +... 
+yess kik in -> look like normal law 
+
+
+### Based on the three different bootstrap sample lengths in 3. compute the corresponding 0.025 and 0.975 quantiles. Compare the three resulting intervals against each other and the "true" confidence interval of the mean under the assumption of normality. (Use for example the function t.test to obtain the 95% percent CI based on asympotic considerations for the mean.)
+????? 
+
+## I.4 Create 2000 bootstrap samples and compute their medians.
+We keep the 2000 created samples from the last part.
+```{r}
+medians <- numeric(m)
+for(i in 0:m){
+  medians[i] <- median(samples[,i]) 
+}
+```
+### Compute the mean on the first 20.0.0 bootstrap medians.
+
+```{r}
+mean_of_medians <- function(n){
+  sum <- 0
+  for(i in 1:n){
+    sum <- sum + medians[i]
+  }
+  return(sum/n)
+}
+median_20b <- mean_of_medians(20)
+median_200b <- mean_of_medians(200)
+median_200b <- mean_of_medians(2000)
+means_first_sample <- c(mean_20b, mean_200b, mean_2000b)
+```
+We have the following result :
+
+ number of sample |     20       |      200        |  2000 
+ ---------------- | ------------ | --------------- | -------------- 
+ medians          |`r median_20b`| `r median_200b` | `r median_2000b`
+
+### Visualise the distribution all the different bootstrap medians to the sample median.
+Based on the three different bootstrap sample lengths in 3. compute the corresponding 0.025 and 0.975 quantiles. Compare the three resulting intervals against each other.
+
+```{r}
+plot(hist(medians), main="")
+```
+title + legende +... 
+yess kik in -> look like normal law 
+
+# II Task n°2 :
+We wish to explore the effect of outliers on the outcomes of Bootstrap Sampling.
+## II.1:
+*Set your seed to 1234. And then sample 1960 points from a standard normal distribution to create the vector x.clean then sample 40 observations from uniform(4,5) and denote them as x.cont. The total data is x <- c(x.clean,x.cont). After creating the sample set your seed to your immatriculation number.*
+```{r}
+set.seed(1234)
+x.clean <- rnorm(1960)
+x.cont <- runif(40,4,5)
+x <- c(x.clean,x.cont) 
+set.seed(12202211)
+```
+## II.2
+*Estimate the median, the mean and the trimmed mean with alpha = 0.05 for x and x.clean.*
+```{r}
+x_mean <- mean(x)
+x_median <- median(x)
+x_trimed_mean <- mean(x, trim=0.05)
+
+xclean_mean <- mean(x.clean)
+xclean_median <- median(x.clean)
+xclean_trimed_mean <- mean(x.clean, trim=0.05)
+```
+sample  | median | mean | trimed mean
+------- | ------ | ---- | ----------- 
+x       | `r x_median`| `r x_mean` | `r x_trimed_mean`
+x.clean | `r xclean_median`| `r xclean_mean` | `r xclean_trimed_mean`
+
+
+## II.3
+Use nonparametric bootstrap (for x and x.clean) to calculate
+standard error
+$$
+se(\theta) = sqrt(\frac{1}{m-1}\sum\ (\theta - \theta )^2)
+$$
+and where s = standar deviation
+
+95 percentile CI of all 3 estimators.
+```{r}
+m <- 2000
+set.seed(12202211)
+x_smpl <- replicate(m, sample(x, size=2000, replace=TRUE))
+sdx <- 0
+for(i in 1:2000){
+  sdx <- sdx + sd(x_smpl[,i])
+}
+sdx = sdx/2000
+se <- 0 
+for(i in 1:2000){
+  se <- se + (sd(x_smpl[,i])-sdx)^2
+}
+se = sqrt(se/(m-1))
+print(se)
+
+x.MEANS <- replicate(m, mean(sample(x, replace=TRUE)))
+mean(x.MEANS); sd(x_smpl) ; sd(x)
+
+```
+
+
+# III Task n°3 :
+# IV Task n°4 :
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ 
