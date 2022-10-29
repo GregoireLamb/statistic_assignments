@@ -10,11 +10,12 @@ output: pdf_document
 ---
 
 # I Task n°1 :
- We will consider the following integral 
- $$
- \int_{1}^{b} e^{-x^3}
- $$
- ## I.1 Integral approximation with fixed bound
+We will consider the following integral 
+$$
+\int_{1}^{b} e^{-x^3}
+$$
+
+## I.1 Integral approximation with fixed bound
 *Use uniformly distributed random variables to approximate the integral for b = 6 (using Monte Carlo integration). Then use the function integrate for comparison.*
 
 At first, we will define the function we are trying to integrate. 
@@ -38,7 +39,7 @@ For the comparison we calcul the same value with the function *integrate* provid
 R_value <- integrate(to_integrate_fct, 1,6)
 R_value
 ```
- ## I.2 Integral approximation infinity bound
+## I.2 Integral approximation infinity bound
  *Use Monte Carlo integration to compute the integral for b = infinity . What would be a good density for the simulation in that case? Use also the function integrate for comparison.*
 
 ### What would be a good density for the simulation in that case?
@@ -67,24 +68,25 @@ We use the transformation
 MC_for_binfinity <- function(){
   u <- rexp(10000, rate=1.5)
   cat(paste("Monte Carlo Integral:",mean(to_integrate_fct(u+1)/dexp(u, rate=1.5)))) 
+  return(mean(to_integrate_fct(u+1)/dexp(u, rate=1.5)))
 }
 MC_for_binfinity()
 
 ```
  
- For the comparison we calcul the same value with the function *integrate* provided by R. 
+For the comparison we calcul the same value with the function *integrate* provided by R. 
 ```{r}
 R_value <- integrate(to_integrate_fct, 1,Inf)
 R_value
 ```
  Our result with the Monte Carlo's method seem correct.
  
- ## I.3 Discution
+## I.3 Discussion
 *Do you have an explanation why Monte Carlo integration agrees in 2. with integrate but not so much in 1.?*
-For sampling and summing up the area with the biggest part has to greathest impact on the result. This is for small values of X. We do have more points in that area of interest for example 2 because we provided a better distribution for that problem. In 1 we simple use the unified distribution, because we dont have better shaped one here.
+In the second Monte Carlos integration, we weighted the interesting area that was between 1 and 2 by choosing the exponential distribution. By doing so we improved the Monte Carlo efficiency. We could have improve the integration in the first case by choosing another distribution. 
 
 # II Task n°2: 
-We will try to approch the area of 
+We will try to approach the area of 
 $$
 r(t) = (exp(cos(t))-2*cos(4t)-sin(t/12)^5) \text{ for } t\in[-\pi,\pi]
 $$
@@ -96,9 +98,9 @@ $$
 y = r(t)*cos(t)
 $$
 
- ## II.1 Visualization of the area.
+## II.1 Visualization of the area.
 *Visualise the function and the area.*
-```{r}
+```{r, echo=TRUE, fig.show="hold", out.width="50%"}
 library(ggplot2)
 
 r_function <- function(t){
@@ -132,8 +134,9 @@ plot(t, r_t,type="l", main="r curve from -pi to pi", xlim=c(-pi,pi))
 ```
 
 
- ## II.2
- *Generate uniform random coordinates within the rectangle [−3,3]×[−2,3.5] and an indicator whether this point lies within the area in question*
+ 
+## II.2 Find the shape 
+ *Generate uniform random coordinates within the rectangle that contain the shape and an indicator whether this point lies within the area in question*
  
 ```{r}
 n <- 100000
@@ -168,19 +171,47 @@ for (i in 1:n){
 df <- data.frame(x_rnd, y_rnd, inside)
 
 ggplot()+
-  geom_point(data= df, aes(x=x_rnd, y=y_rnd, color = inside ), size = 0.1)
-#+
- # geom_path(aes(x=x_polar(x), y=y_polar(y)))
+  geom_point(data= df, aes(x=x_rnd, y=y_rnd, color = inside ), size = 0.1)+
+  ggtitle("Points in the shape")
 ```
  
- ## II.3
+## II.3 Experiment the effect of sample size 
+*Simulate 100, 1000, 10000 and 100000 random coordinates and calculate the percentage of the points within the enclosed area. Based on this information estimate the area of the figure. Summaries those values in a table and visualise them in plots of the function curve and enclosed area.*
  
+```{r, fig.show="hold", out.width="50%"}
+df_res <- data.frame(matrix(ncol = 3, nrow = 4)) 
+colnames(df_res) <- c("n", "%in the figure", "surface estim")
+perc <- c(1:4)
+siz <- c(100, 1000, 10000, 100000)
+for (i in 1:4){
+  n <- siz[i]
+  xs <- runif(n, min=-3, max=3)
+  ys <- runif(n, min=-2, max=3.5)
+  
+  inside <- numeric(n)
+  for (j in 1:n){
+    inside[j] <- is_in_area(xs[j], ys[j])
+  }
+  df <- data.frame(xs, ys, inside)
+  perc[i] <- sum(as.numeric(inside))/n
+  #plot
+  p <- ggplot() + geom_point(data= df, aes(x=xs, y=ys, color = ifelse(inside, 'red', 'blue') ), size = 0.1) +ggtitle(paste(c("Fig with n=",n), collapse = " "))
+  print(p)
+  
+  df_res[i,] <- c(n, sum(as.numeric(inside))/n , sum(as.numeric(inside))/n*(6*5.5))
+  
+}
+  
+```
+
+```{r}
+knitr::kable(df_res,  caption ="Effect of the sample size")
+```
+The estimation of the surface has no unit because it depends on the axis units. If we assume that both y and x axis are in *cm* the the shape's area is in $cm^2$.
+
+# IV Explain the functionality of Monte Carlo simulation in your own words referring to these simulations.
  
- 
- 
- 
- 
- 
+Monte Carlo simulation is an interesting tool that allows, among other things, to approximate the outputs of a model or a complex function. When the solution of a problem is too complex to be done analytically, it is possible to use this method to approximate an expected quantity or behavior. The main idea is to use random procedure to estimate a numerical number. The Monde Carlos method is mostly use to estimate a surface in multi-dimensions. By comparing a large number of output values and their position (in or out of the shape), we were able to approximate the surface drawn by a curve that would have been complex to calculate analytically.  
  
  
  
