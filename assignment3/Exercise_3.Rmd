@@ -1,0 +1,95 @@
+---
+title: "Exercise 3 - Monte Carlo Simulation of areas"
+author: "Yannik Gaebel"
+date: '2022-10-30'
+output: pdf_document
+---
+
+```{r, echo = TRUE}
+set.seed(12208157)
+```
+
+# Task 1
+
+Plot the function
+
+```{r}
+x <- seq(-1,3,0.1)
+g <- function(x) {exp(-x^3)}
+exp <- dexp(x,rate=1)
+plot(x,g(x),type='l')
+lines(x,exp(x),type='l')
+```
+
+# Task 1.1
+
+```{r}
+# Calculate Monte Carlo Integral
+b <- 6
+X <- runif(100000, min=1, max=b)
+cat(paste("Monte Carlo Integral:",mean(exp(-X^3)*(b-1))),"\n")
+
+# Calculate Numerical Integral
+cat(paste("Numerical Integral: "))
+integrate(f = function(x){exp(-x^3)},lower = 1,upper = b)
+```
+
+Off by 0.002
+
+# Task 1.2
+
+What would be a good density for the simulation in that case?
+
+Answer:
+
+exponential distribution 
+
+We change the formula in the following way so that the exponential distribution can be used
+
+```{r}
+X <- rexp(100000)
+cat(paste("Monte Carlo Integral:",mean(exp(-(X+1)^3)/dexp(X))),"\n")
+
+# Calculate Numerical Integral
+cat(paste("Numerical Integral: "))
+integrate(f = function(x){exp(-x^3)},1,Inf)
+```
+
+Off by 0.0003
+
+# Task 1.3
+
+Do you have an explanation why Monte Carlo integration agrees in 2. with integrate but not so much in 1.?
+
+Answer:
+
+Fläche welche öfter berechnet ist besser agbedeckt. Fläche die für Integral relevant ist wird am meisten "getestet"
+
+# Task 2.1
+
+```{r}
+t <- seq(-pi,pi,0.01)
+r <- function(t) {exp(cos(t))-2*cos(4*t)-sin(t/12)^5}
+plot(t,r(t),type='l')
+```
+
+# Task 2.2
+
+```{r}
+r_x <- runif(1)
+r_y <- runif(1)
+lies
+```
+
+# Task 2.3
+
+```{r}
+
+```
+
+# Task 2.4
+
+```{r}
+
+```
+
