@@ -1,0 +1,266 @@
+---
+title: 'Exercise 1: Variance Estimation'
+author: "Joan Salvà"
+date: "October 2022"
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+subtitle: Advanced Methods for Regression and Classification
+---
+
+
+We load the `College` dataset as for the last exercise, log-transform the target variable, split into train/test and define the RMSE evaluation.
+
+```{r, results='hold'}
+data(College, package='ISLR')
+
+library(data.table)
+df <- setDT(College)
+
+# Make this example reproducible
+set.seed(1)
+
+# Do not use Accept and Enroll
+out_of_model <- c('Accept', 'Enroll', 'Apps')
+
+# randomly split into training and test data:
+n <- nrow(College)
+index <- sample(1:n, round(n *2/3))
+
+df$y <- log(df$Apps)
+
+train  <- df[index, !..out_of_model]
+test   <- df[!index, !..out_of_model]
+
+evaluate_on_set <- function(mod, set) {
+  
+  s <- sqrt(
+    mean((predict(mod, set) - set$y)^2)
+  )
+  return(s)
+}
+```
+
+### Exercise 1
+
+```{r}
+full_model <- lm(y ~ ., data=train)
+summary(full_model)
+plot(full_model)
+```
+
+```{r}
+library(cvTools)
+
+cv_fit <- cvFit(full_model, data = train, y = train$y, K = 5, cost = rmspe, R = 100, seed=1)
+cv_fit
+plot(cv_fit)
+```
+
+What do we conclude? 
+
+### Exercise 2: Best subset regression
+
+```{r, results = 'hide'}
+library(leaps)
+
+reg <- regsubsets(y ~ ., data = train, nbest = 3, nvmax = 10)
+summary(reg)
+plot(reg)
+```
+
+
+We can see that no model has a BIC below -600. Therefore, the best model will be the simplest one in that BIC range. That is the model with subset size = 8 with features *PrivateYes*, *F.Undergrad*, *Room.Board*, *Books*, *PhD*, *S.F.Ratio*, *Expend*, *Grad.Rate*. However, the table above is unclear and we would have to find a better way to plot the results.
+
+```{r}
+x <- summary(reg)
+
+str(x)
+index <- numeric(0)
+for (i in 1:10) {
+  index <- c(index, rep(i, 3))
+}
+index
+
+plot(index, x$bic, xlab='Size of subset', ylab = 'BIC', main = 'BIC by number of regressors')
+
+```
+The best model is found with size = 9. It has the subset of variables: *PrivateYes*, *F.Undergrad*, *Outstate*, *Room.Board*, *Books*, *PhD*, *S.F.Ratio*, *Expend*, *Grad.Rate*, in addition to the intercept.
+
+Let's test this reduced linear model against the full model in (1) using the `cvFit` function.
+
+```{r}
+reduced_mod <- lm(y ~ Private + F.Undergrad + Outstate + Room.Board + Books + PhD + S.F.Ratio + Expend + Grad.Rate, data = train)
+
+summary(reduced_mod)
+```
+In the reduced model, all variables show strong significance. That is not the case of the full model, as we had seen before.
+
+```{r, results='hold'}
+
+cv_fit_reduced <- cvFit(reduced_mod, data = train, y = train$y, K = 5, cost = rmspe, R = 100, seed=1)
+print('Reduced model CV results: ')
+cv_fit_reduced
+print('Full model CV results: ')
+cv_fit
+
+
+plot(cv_fit_reduced)
+plot(cv_fit)
+
+evaluations <- c(
+  round(evaluate_on_set(full_model, train), 3),
+  round(evaluate_on_set(full_model, test), 3),
+  round(evaluate_on_set(reduced_mod, train), 3),
+  round(evaluate_on_set(reduced_mod, test), 3)
+)
+
+cv_list <- c(
+  round(cv_fit$cv, 3), ' ' , round(cv_fit_reduced$cv, 3), ' ' 
+)
+
+rsqrt <- c(round(summary(full_model)$adj.r.squared, 3), '', round(summary(reduced_mod)$adj.r.squared, 3), '')
+
+
+table <- data.frame(
+  Dataset=c('train', 'test', 'train', 'test'),
+  Model=rep(c('full', 'reduced'), each=2),
+  RMSE=evaluations, 
+  CVFit=cv_list, 
+  AdjRSqrt=rsqrt
+)
+
+knitr::kable(table, caption = "Error table")
+```
+Prediction error seems to be a bit smaller in the reduced model. This one presents errors with lower variance over the 100 iterations of the cross-validation.
+
+However, the RMSE and $R^2$ values seem to be slightly worse in the reduced model.
+
+### Exercise 3: Principal component regression (PCR)
+
+```{r}
+
+model_pcr <- plsr(y~ ., data = df[, !..out_of_model], susbet = train, scale = TRUE, validation="CV", segments=10, segment.type="random")
+
+summary(model_pcr)
+
+plot(model_pcr, plottype = "validation", val.type = "RMSEP", legend = "topright")
+
+```
+The model with 12 components seems optimal because the RMSE does not get better when more components are added.
+
+```{r}
+number_of_components = 13
+plot(model_pcr, ncomp=number_of_components, asp=1, line=TRUE)
+
+pred_train <- predict(model_pcr, newdata=train, ncomp=number_of_components)
+pred_test <- predict(model_pcr, newdata=test, ncomp=number_of_components)
+rmse_train <- sqrt(mean((train$y - pred_train)^2))
+rmse_test <- sqrt(mean((test$y - pred_test)^2))
+
+print(paste('RMSE (train):', rmse_train))
+```
+
+
+```{r}
+
+predplot(model_pcr, ncomp = number_of_components, which = c('test'), newdata = test)
+abline(a = 0, b = 1)
+print(paste('RMSE (test):', rmse_test))
+
+```
+
+### Exercise 4: Partial least squares regression (PLS)
+
+
+```{r}
+library(pls)
+
+model_plsr <- plsr(y~ ., data = df[, !..out_of_model], susbet = train, scale = TRUE, validation="CV", segments=10, segment.type="random")
+
+summary(model_plsr)
+
+plot(model_plsr, plottype = "validation", val.type = "RMSEP", legend = "topright")
+
+```
+The model with 5 components seems optimal because the RMSE does not get better when more components are added.
+
+```{r}
+number_of_components = 5
+plot(model_plsr, ncomp=number_of_components, asp=1, line=TRUE)
+
+pred_train <- predict(model_plsr, newdata=train, ncomp=number_of_components)
+pred_test <- predict(model_plsr, newdata=test, ncomp=number_of_components)
+rmse_train_plsr <- sqrt(mean((train$y - pred_train)^2))
+rmse_test_plsr <- sqrt(mean((test$y - pred_test)^2))
+
+print(paste('RMSE (train):', rmse_train_plsr))
+```
+
+
+```{r}
+
+predplot(model_plsr, ncomp = number_of_components, which = c('test'), newdata = test)
+abline(a = 0, b = 1)
+print(paste('RMSE (test):', rmse_test_plsr))
+
+```
+*PCR vs PLSR comparison*
+```{r}
+evaluation <- c(
+  rmse_train, rmse_test, rmse_train_plsr, rmse_test_plsr
+)
+
+table <- data.frame(
+  Dataset=c('train', 'test', 'train', 'test'),
+  Model=rep(c('PCR', 'PLS'), each=2),
+  optimal_number_of_components = c(13,13,5,5),
+  RMSE=evaluations
+)
+colnames(table) <- c('Dataset', 'Model', 'Optimal N. Components', 'RMSE')
+
+knitr::kable(table, caption = "Error table")
+```
+
+PCR provides better RMSE values both in the test and train datasets. However, it uses more components. 
+
+### Exercise 5: PCR by hand
+
+```{r}
+X <- scale(model.matrix(train$y ~ ., train), center = TRUE, scale = TRUE)
+X[, 1] <- numeric(length = nrow(X))
+
+principal_components <- princomp(X)
+
+q <- 13
+
+Z_train <- principal_components$scores[, 1:q]
+
+theta <- solve(t(Z_train) %*% Z_train) %*% t(Z_train) %*% scale(train$y, center = TRUE, scale = TRUE)
+
+X_test <- scale(model.matrix(test$y ~ ., test), scale = TRUE, center = TRUE)
+X_test[, 1] <- numeric(length = nrow(X_test))
+Z_test <- X_test %*% principal_components$loadings
+
+
+prediction <- Z_test[, 1:q] %*% theta
+print(prediction)
+
+
+plot(prediction, scale(test$y, center = TRUE, scale = TRUE))
+
+rmse_manual_pcr <- sqrt(mean((prediction - scale(test$y, center = TRUE, scale = TRUE))^2))
+print(rmse_manual_pcr)
+abline(a = 0, b = 1)
+
+```
+```{r}
+model_pcr$coefficients[, , q]
+
+beta_manual <- principal_components$loadings[, 1:q] %*% theta
+print(beta_manual)
+```
+
+</div>
+</pre>
