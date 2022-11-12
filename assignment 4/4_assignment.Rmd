@@ -19,7 +19,7 @@ n <- length(data)
 
 1. How many possible bootstrap samples are there, if each bootstrap sample has the same size as the original?
 *Answer*: Since bootstrapping does not pay attention to the order and allows repetition:
-$$\text{#Boostrap samples} = {2n + 1\choose n} = {25 \choose 12} = 5200300$$
+$$\text{Number of boostrap samples} = {2n + 1\choose n} = {25 \choose 12} = 5200300$$
 
 2. Compute the mean and the median of the original sample.
 ```{r}
@@ -191,22 +191,118 @@ table <- data.frame(
   CITrimMeanRight=c(ci_trimmean[2], ci_trimmean[4])
 )
 
-knitr::kable(table, caption = "SE and Confidence intervals for differnt estimators")
+knitr::kable(table, caption = "SE and Confidence intervals for different estimators")
 
 ```
 
-4. Use parametric bootstrap (based on x and x.clean) to calculate, for the mean and the trimmed mean:
+4, 5. Use parametric bootstrap (based on x and x.clean) to calculate, for the mean and the trimmed mean:
 - bias
 - standard error
 - 95 percentile CI
 - bias corrected estimate
 
-
-When estimating the scale of the of the data in the “robust” case use the mad.
-
 Compare and summarize your findings with tables and graphically.
 
+```{r}
+mean_estimate_x <- mean(x)
+mean_estimate_x_clean <- mean(x.clean)
+sd_estimate_x <- sd(x)
+sd_estimate_x_clean <- sd(x.clean)
+trimmean_estimate_x <- mean(x, trim=0.05)
+trimmean_estimate_x_clean <- mean(x.clean, trim=0.05)
+
+samples_x <- replicate(m, rnorm(length(x), mean=mean_estimate_x, sd=sd_estimate_x))
+means_x <- numeric(m)
+for (i in 1:m) {means_x[i] <- mean(samples_x[,i])}
+
+
+samples_x_clean <- replicate(m, rnorm(length(x.clean), mean=mean_estimate_x_clean, sd=sd_estimate_x_clean))
+means_x_clean <- numeric(length(samples_x_clean))
+for (i in 1:m) {means_x_clean[i] <- mean(samples_x_clean[,i])}
+
+standard_error_x <- sqrt(1 / (m - 1) * sum((means_x - mean(means_x))^2))
+
+standard_error_x_clean <- sqrt(1 / (m - 1) * sum((means_x_clean - mean(means_x_clean))^2))
+
+a <- 0.05
+b <- 1 - a
+ci_mean = c(
+  quantile(means_x, a), quantile(means_x, b),
+  quantile(means_x_clean, a), quantile(means_x_clean, b)
+)
+
+medians_x <- numeric(m)
+for (i in 1:m) {means_x[i] <- median(samples_x[,i])}
+medians_x_clean <- numeric(m)
+for (i in 1:m) {means_x_clean[i] <- median(samples_x_clean[,i])}
+trimmean_x <- numeric(m)
+for (i in 1:m) {trimmean_x[i] <- mean(samples_x[,i], trim=0.05)}
+trimmean_x_clean <- numeric(m)
+for (i in 1:m) {trimmean_x_clean[i] <- mean(samples_x_clean[,i], trim=0.05)}
+
+ci_median = c(
+    quantile(medians_x, a), quantile(medians_x, b),
+    quantile(medians_x_clean, a), quantile(medians_x_clean, b))
+
+ci_trimmean = c(
+  quantile(trimmean_x, a), quantile(trimmean_x, b),
+  quantile(trimmean_x_clean, a), quantile(trimmean_x_clean, b))
+
+bias_mean_x <- mean(means_x) - mean_estimate_x
+bias_trim_mean_x <- mean(trimmean_x) - trimmean_estimate_x
+
+bias_mean_x_clean <- mean(means_x_clean) - mean_estimate_x_clean
+bias_trim_mean_x_clean <- mean(trimmean_x_clean) - trimmean_estimate_x_clean
+
+table <- data.frame(
+  sample=c('X', 'X.clean'),
+  BiasMean=c(bias_mean_x, bias_mean_x_clean),
+  BiasTrimMean=c(bias_trim_mean_x, bias_trim_mean_x_clean),
+  StandardError=c(standard_error_x, standard_error_x_clean)
+)
+
+knitr::kable(table, caption = "SE and Bias for the estimates")
+
+table_2 <- data.frame(
+  sample=c('X', 'X.clean'),
+  CIMeanLeft=c(ci_mean[1], ci_mean[3]),
+  CIMeanRight=c(ci_mean[2], ci_mean[4]),
+  CIMedianLeft=c(ci_median[1], ci_median[3]),
+  CIMedianRight=c(ci_median[2], ci_median[4]),
+  CITrimMeanLeft=c(ci_trimmean[1], ci_trimmean[3]),
+  CITrimMeanRight=c(ci_trimmean[2], ci_trimmean[4])
+)
+knitr::kable(table_2, caption = "Confidence intervals for the estimates")
+
+table <- data.frame(
+  sample=c('X', 'X.clean'),
+  MeanEstimator=c(mean_estimate_x, mean_estimate_x_clean),
+  TrimMeanEstimator=c(trimmean_estimate_x, trimmean_estimate_x_clean),
+  bias_corrected_mean=c(mean_estimate_x - bias_mean_x, mean_estimate_x_clean - bias_mean_x_clean),
+  bias_corrected_trimmean=c(trimmean_estimate_x - bias_trim_mean_x, trimmean_estimate_x_clean - bias_trim_mean_x_clean)
+)
+names(table) <- c(
+  'Sample', 'Mean Est.', 'Trimmed Mean Est.', 'Unbiased Mean Est.', 'Unbiased Trimmed Mean Est.'
+)
+knitr::kable(table, caption = "Estimators and Bias Corrected Estimators")
+```
+
 # Task 3
-Based on the above tasks and your lecture materials, explain the methodology of bootstrapping for the construction of conifdence intervals and parametric or non-parametric tests.
+Based on the above tasks and your lecture materials, explain the methodology of bootstrapping for the construction of confidence intervals and parametric or non-parametric tests.
+
+*Answer*: The main idea of bootstrapping is resampling a single dataset to create many simulated samples. This process allows you to calculate standard errors, construct confidence intervals, and perform hypothesis testing.
+
+Let's go over the process of defining a confidence interval for some parameter $theta$ that describes a distribution and that we want to estimate. In Task 1 and 2, we used the Percentile Bootstrap CI method, that works as follows: resample $m$ times from the original sample and compute the estimator for each sample, giving $\hat{\theta}^i, i = 1, \dots, m$ estimates. Then use the percentils of these sample of size $m$ to define the confidence interval. Typically choose $p_1  = 0.05$ and $p_2 = 0.05$. 
+
+Bootstrap tests are useful when the alternative hypothesis is not well specified. In cases where there is parametric alternative hypothesis, likelihood or Bayesian methods might be preferable. There are multiple tests that use bootstrapping resampling. A basic exaple is the following:
+
+Let ${ x_{1},\ldots ,x_{n}}x_{1},\ldots ,x_{n}$ be a random sample from distribution F with sample mean ${ {\bar {x}}}{\bar {x}}$ and sample variance ${ \sigma _{x}^{2}}\sigma _{x}^{2}$. Let ${ y_{1},\ldots ,y_{m}}{ y_{1},\ldots ,y_{m}}$ be another, independent random sample from distribution G with mean ${ {\bar {y}}}{\bar {y}}$ and variance ${ \sigma _{y}^{2}}\sigma _{y}^{2}$
+
+1. Calculate the test statistic ${ t={\frac {{\bar {x}}-{\bar {y}}}{\sqrt {\sigma _{x}^{2}/n+\sigma _{y}^{2}/m}}}}$
+2. Create two new data sets whose values are ${ x_{i}'=x_{i}-{\bar {x}}+{\bar {z}}}$ and ${ y_{i}'=y_{i}-{\bar {y}}+{\bar {z}},}$ where ${ {\bar {z}}}$ is the mean of the combined sample.
+3. Draw a random sample (${ x_{i}^{*}}$) of size $n$ with replacement from ${ x_{i}'}$ and another random sample (${ y_{i}^{*}}$) of size $m$ with replacement from ${ y_{i}'}$.
+4. Calculate the test statistic ${ t^{*}={\frac {{\bar {x^{*}}}-{\bar {y^{*}}}}{\sqrt {\sigma _{x}^{*2}+v \sigma _{y}^{*2}/m}}}}$
+5. Repeat 3 and 4 $B$ times (for example $B$ = 1000 times) to collect $B$ values of the test statistic.
+6. Estimate the p-value as ${ p={\frac {\sum _{i=1}^{B}I\{t_{i}^{*}\geq t\}}{B}}}$ where ${ I({\text{condition}})=1}$ when condition is true and 0 otherwise.
 
 </div></pre>
