@@ -1,0 +1,174 @@
+---
+title: "Monte Carlo Simulation of areas"
+author: "Kirill Medovshchikov"
+date: "2022-11-04"
+output: 
+  pdf_document:
+    number_sections: true
+    toc: true
+include-before:
+  '\newpage'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+\newpage
+
+# Setup
+
+In this section the necessary library is attached and the seed is set to the student number.
+
+```{r}
+library(ggplot2)
+library(tidyr)
+
+set.seed(12144024)
+```
+
+# Computation of integrals with the Monte Carlo integration
+
+## For b = 6
+
+Here the uniformly distributed random variables are created to create an integral for b which is equal to 6.
+
+```{r}
+a <- 1
+b <- 6
+n <- 1000000
+
+unif_dist <- runif(n, a, b)
+```
+
+Then the function for calculating the exponent of the integrated value is created.
+
+```{r}
+exponential <- function(n){
+  return(exp(-n^3))
+}
+```
+
+And the exponential for the random variables is calculated.
+
+```{r}
+expo <- exponential(unif_dist)
+```
+
+Here the function for calculating the monte carlo integration is implemented.
+
+```{r}
+monte_carlo_integration <- function(n){
+  return(mean(expo) * (b - a))
+}
+```
+
+And the result of the integration is displayed.
+
+```{r}
+mci_my <- monte_carlo_integration(unif_dist)
+print(mci_my)
+```
+
+As well as the result of integration performed by the R's native function.
+
+```{r}
+mci_native <- integrate(exponential, a, b)
+print(mci_native)
+```
+
+The two results differ very lightly, with the difference being just in mere thousands to the right from the decimal point.
+
+## For b = *infinity*
+
+Here the new b variable equal to infinity is defined.
+
+```{r}
+b_inf = Inf
+```
+
+After that a new monte carlo integration function is created for the integration of an infinite b variable.
+
+```{r}
+monte_carlo_integration_inf <- function(n){
+  expo_inf <- rexp(n)
+  return(mean(exponential(expo_inf + 1) / dexp(expo_inf)))
+}
+```
+
+Whose output can be found below.
+
+```{r}
+mci_my_inf <- monte_carlo_integration_inf(n)
+print(mci_my_inf)
+```
+
+And that is also very close to the native R's integrate function's output. The tryCatch condition is used due to the previously occurring error in the exponent calculation, that had been resolved by now. In any case it had been decided to leave the construct be due to the inpredictability of the program's behavior due to working with infinite number in this particular case.
+
+```{r}
+tryCatch({
+  mci_native_inf <- integrate(exponential, a, b_inf)
+  print(mci_native_inf)
+},
+error = function(error_message){
+  print(error_message)
+})
+```
+
+## Why Monte Carlo integration agrees in 2. with integrate but not so much in 1.?
+
+While the difference in between these two cases is not very large, it is still present in both of the tests.
+
+```{r}
+mci_native_clean <- extract_numeric(mci_native)[1]
+mci_native_inf_clean <- extract_numeric(mci_native_inf)[1]
+```
+
+```{r}
+mci_my
+mci_native_clean
+```
+
+```{r}
+mci_my_inf
+mci_native_inf_clean
+```
+
+As it can be seen from the code chunks above, contrary to the question, the difference is indeed in favor of the second experiment. This could be due to the fact that the infinite b variable allows for more samples to be processed and therefore have a more precise estimation.
+
+# Monte Carlo enclosure by the graph
+
+## Visualise the function and the area
+
+Here the function is used to calculate the r(t).
+
+```{r}
+rt_func <- function(t){
+  exp(cos(t)) - 2 * cos(4 * t) - sin(t / 12)^5
+}
+```
+
+Then the sequence from minus pi to the positive pi is initialized.
+
+```{r}
+t <- seq(by=0.01,from = -pi, to = pi)
+```
+
+Then the function's output is utilized in the multiplication with the sin of t and cos of t for x and y accordingly.
+
+```{r}
+x <- rt_func(t) * sin(t)
+y <- rt_func(t) * cos(t)
+```
+
+When the computed x and y values are plotted, the shape similar to a butterfly can be observed.
+
+```{r}
+plot(x, y, 'l')
+```
+
+The same here, although now with the use of the ggplot() library.
+
+```{r}
+ggplot() + geom_path(aes(x=x, y=y))
+```
