@@ -1,0 +1,304 @@
+---
+title: "Exercice n°5"
+subtitle: "Sampling Intervals for Models"
+author: "Grégoire de Lambertye"
+date: "`r Sys.Date()`"
+header-includes:
+   - \usepackage{amsmath,amssymb}
+   - \usepackage[utf8]{inputenc}
+output: pdf_document
+---
+
+Due: Wednesday, 23 November 2022, 8:00 PM
+
+# Task n°1
+Consider a two sample problem and the hypothesis $H_0:\mu1=\mu2 vs H_1:\mu1 \neq \mu2$ , where $\mu1$ and $\mu2$ are the corresponding sample locations. The two samples are:
+
+```{r}
+matricul.number <- 12202211
+x1 <- c(-0.673, -0.584, 0.572, -0.341, -0.218, 0.603, -0.415, -0.013, 0.763, 0.804, 0.054, 1.746, -0.472, 1.638, -0.578, 0.947, -0.329, -0.188, 0.794, 0.894, -1.227, 1.059)
+x2 <- c(0.913, -0.639, 2.99, -5.004, 3.118, 0.1, 1.128, 0.579, 0.32, -0.488, -0.994, -0.212, 0.413, 1.401, 0.007, 0.568, -0.005, 0.696)
+#x2 <- c(1000,1005,1007,1006,1009,1005,908,807)
+set.seed(matricul.number)
+```
+
+
+## I.1 Plot the data in a way which visualises the comparison of means appropriately.
+```{r}
+library(ggplot2)
+par(mfrow=c(1,1))
+boxplot(x1,x2, main = "Comparison of x1 and x2", ylab = "value", names = c("x1", "x2"))
+points(x=1, y = mean(x1), col='red', pch=3)
+points(x=2, y = mean(x2), col='red', pch=3)
+legend(.5,-4 , legend=c(paste("sample mean: x1=",round(mean(x1),digits=4), " x2=",round(mean(x2),digits=4))),
+       col=c("red"), lty=1:2, cex=0.8)
+```
+## I.2 Consider different sampling schemes
+- Sampling with replacement from each group
+- Centering both samples and then resample from the combined samples x1 and x2 for n1 and n2 times.
+
+```{r}
+#Sampling with replacement from each group
+sampling_1 <- function(data,n, size=length(data)){
+  samples = numeric(n)
+  return(replicate(n, sample(data, size=size, replace=TRUE)))
+}
+  
+#Centering both samples and then resample from the combined samples x1 and x2 for n1 and n2 times. 
+sampling_2 <- function(data1,data2,n1,n2, size1=length(data1),size2=length(data2)){
+  #centreing 
+  data1 <- data1-mean(data1)
+  data2 <- data2-mean(data2)
+  combined <- c(data1,data2)
+  sampl_x1 <- replicate(10000, sample(combined, size=size1, replace=TRUE))
+  sampl_x2 <- replicate(10000, sample(combined, size=size2, replace=TRUE))
+  return(list("sampl_x1" = sampl_x1, "sampl_x2" = sampl_x2))
+}
+
+n=1
+boot1_x1 <- sampling_1(x1, n=n)
+boot1_x2 <- sampling_1(x2, n=n)
+
+boot2 <- sampling_2(x1,x2,n,n)
+```
+*Argue for choice what is more natural and which advantages or disadvantages may apply.*   
+Our goal is to determine the whether the sample locations are the same. In the first case, we have the most common way to do it with bootsraping, we can estimate the parameter of x1 and x2 with their samples and use t-test to conclude on our hypothesis. The second method 
+
+
+## I.3 Bootstrap using both strategies mentioned above using the t-test statistic. Calculate the bootstrap p-value based on 10'000 bootstrap samples and 0.95 as well as 0.99 confidence intervals. Make your decision at the significance level 0.05 or 0.01, respectively.
+```{r}
+test_stat <- function(x1,x2){
+  return((mean(x1) - mean(x2))/sd(x1))
+}
+```
+
+```{r}
+#Generating bootstraps
+n=10000
+mean_x1 = mean(x1)
+mean_x2 = mean(x2)
+boot1_x1<- sampling_1(x1, n=n)
+boot1_x2 <- sampling_1(x2, n=n)
+
+boot2 <- sampling_2(x1,x2,n,n)
+boot2_x1 <- boot2[[1]]
+boot2_x2 <- boot2[[2]]
+
+tests_x1 <- test_stat(x1,x2)
+tests_x2 <- test_stat(x2,x1)
+```
+
+```{r}
+#1 assuming location = mean 
+#Methode 1
+#means
+bootstap_means_x1 <- numeric(n)
+bootstap_means_x2 <- numeric(n)
+for(i in 1:n){
+  bootstap_means_x1[i] <- mean(boot1_x2[,i]) 
+  bootstap_means_x2[i] <- mean(boot1_x1[,i]) 
+}
+#sd 
+bootstap_sd_x1 <- numeric(n)
+bootstap_sd_x2 <- numeric(n)
+for(i in 1:n){
+  bootstap_sd_x1[i] <- sd(boot1_x2[,i]) 
+  bootstap_sd_x2[i] <- sd(boot1_x1[,i])
+}
+#test statistique 
+bootstap_tests_x1 <- numeric(n)
+bootstap_tests_x2 <- numeric(n)
+for(i in 1:n){
+  bootstap_tests_x1[i] <- (bootstap_means_x1[i] - mean_x2)/bootstap_sd_x1[i]
+  bootstap_tests_x2[i] <- (bootstap_means_x2[i] - mean_x1)/bootstap_sd_x2[i]
+}
+#p_values
+p_value_x1 <- 1
+p_value_x2 <- 1
+
+for(i in 1:n){
+  if(abs(bootstap_tests_x1[i]) > abs(tests_x1)){
+    p_value_x1 <- p_value_x1 + 1}
+  if(abs(bootstap_tests_x2[i]) > abs(tests_x2)){
+    p_value_x2 <- p_value_x2 + 1}
+}
+p_value_x1 <- p_value_x1/(n+1)
+p_value_x2 <- p_value_x2/(n+1)
+
+print(paste('pvalue sampling mthod 1 ; x1=x2:', p_value_x1))
+print(paste('pvalue sampling mthod 1 ; x2=x2:', p_value_x2))
+
+ci_1_x1_left <-  quantile(bootstap_means_x1, 0.025)
+ci_1_x1_right <-  quantile(bootstap_means_x1, 0.925)
+ci_1_x2_left <-  quantile(bootstap_means_x2, 0.025)
+ci_1_x2_right <-  quantile(bootstap_means_x2, 0.925)
+
+print(paste('ci 95% x1=x2: [', ci_1_x1_left,' : ',ci_1_x1_right ,']'))
+print(paste('ci 95% x2=x21 [', ci_1_x2_left,' : ',ci_1_x2_right ,']'))
+
+ci_1_x1_left_99 <-  quantile(bootstap_means_x1, 0.005)
+ci_1_x1_right_99 <-  quantile(bootstap_means_x1, 0.995)
+ci_1_x2_left_99 <-  quantile(bootstap_means_x2, 0.005)
+ci_1_x2_right_99 <-  quantile(bootstap_means_x2, 0.995)
+
+print(paste('ci 99% x1=x2: [', ci_1_x1_left_99,' : ',ci_1_x1_right_99 ,']'))
+print(paste('ci 99% x2=x1: [', ci_1_x2_left_99,' : ',ci_1_x2_right_99 ,']'))
+```
+
+```{r}
+
+p_value2_x1 <- 1
+t_values = numeric(n)
+for(i in 1:n){
+    t_values[i] <- test_stat(boot2_x1[,i],boot2_x2[,i])  # bootstrap test statistic
+    if( (abs(t_values[i]) > abs(tests_x1)) ){
+      p_value2_x1 <- p_value2_x1 + 1}
+}
+p_value2_x1 <- p_value2_x1/(n+1)
+
+p_value2_x2 <- 1
+t_values2 = numeric(n)
+for(i in 1:n){
+    t_values2[i] <- test_stat(boot2_x2[,i],boot2_x1[,i])  # bootstrap test statistic
+    if( (abs(t_values[i]) > abs(tests_x2)) ){
+      p_value2_x2 <- p_value2_x2 + 1}
+}
+p_value2_x2 <- p_value2_x2/(n+1)
+
+print(paste('pvalue sampling method 2 ; x1=x2:', p_value2_x1))
+print(paste('pvalue sampling method 2 ; x2=x2:', p_value2_x2))
+
+ci_2_x1_left <-  quantile(bootstap_means_x1, 0.025)
+ci_2_x1_right <-  quantile(bootstap_means_x1, 0.925)
+ci_2_x2_left <-  quantile(bootstap_means_x2, 0.025)
+ci_2_x2_right <-  quantile(bootstap_means_x2, 0.925)
+
+print(paste('ci 95% x1=x2: [', ci_1_x1_left,' : ',ci_1_x1_right ,']'))
+print(paste('ci 95% x2=x21 [', ci_1_x2_left,' : ',ci_1_x2_right ,']'))
+
+ci_2_x1_left_99 <-  quantile(bootstap_means_x1, 0.005)
+ci_2_x1_right_99 <-  quantile(bootstap_means_x1, 0.995)
+ci_2_x2_left_99 <-  quantile(bootstap_means_x2, 0.005)
+ci_2_x2_right_99 <-  quantile(bootstap_means_x2, 0.995)
+
+print(paste('ci 99% x1=x2: [', ci_1_x1_left_99,' : ',ci_1_x1_right_99 ,']'))
+print(paste('ci 99% x2=x1: [', ci_1_x2_left_99,' : ',ci_1_x2_right_99 ,']'))
+```
+
+
+## I.4 What would be a permutation version of the test? Implement the corresponding permutation test and obtain p-value and confidence intervals as in 3. to get a corresponding test decision at the same significance levels.
+ 
+A permutation version of the test would be a permutation of the values between x1 and x2.  
+
+```{r}
+indices <- seq(from = 1, to = length(x1) + length(x2), by = 1)
+combined <- c(x1, x2)
+
+t_stat_x1 <- c()
+t_stat_x2 <- c()
+
+for (i in 1:n) {
+  x1_indices <- sample(indices, size = length(x1), replace = FALSE)
+  
+  boot_x1 <- combined[x1_indices]
+  boot_x2 <- setdiff(combined, boot_x1)
+  
+  t_stat_x1 <- c(t_stat_x1, ((mean(boot_x1)-mean(x2)) / sd(boot_x1)))
+  t_stat_x2 <- c(t_stat_x2, ((mean(boot_x2)-mean(x1)) / sd(boot_x2)))
+}
+
+p_value_x1 <- 1
+p_value_x2 <- 1
+
+for(i in 1:n){
+  if(abs(t_stat_x1[i]) > abs(tests_x1)){
+    p_value_x1 <- p_value_x1 + 1}
+  if(abs(t_stat_x2[i]) > abs(tests_x2)){
+    p_value_x2 <- p_value_x2 + 1}
+}
+p_value_x1 <- p_value_x1/(n+1)
+p_value_x2 <- p_value_x2/(n+1)
+
+hist(t_stat_x1)
+abline(v = abs(tests_x1) )
+hist(t_stat_x2)
+abline(v = abs(tests_x2) )
+
+print(paste('pval x1=x2', p_value_x1))
+print(paste('pval x2=x1', p_value_x2))
+```
+
+```{r}
+library(boot)
+my.mean <- function(x,i) mean(x[i])
+BOOTMEAN <- boot(x1,my.mean,200)
+boot.ci(boot.out = BOOTMEAN, type = c("norm", "perc", "bca"))
+```
+
+
+## I.5 The Wilxocon rank sum test statistic is the sum of ranks of the observations of sample 1 computed in the combined sample. Use bootstrapping with both strategies mentioned above and obtain p-value and confidence intervals as in 3. to get a corresponding test decision at the same significance levels.
+```{r}
+# First method
+
+## x1
+n <- 200
+defaultW <- getOption("warn")
+options(warn = -1)
+
+
+Wilcox_boot_x1 <- c()
+for(i in 1:n){
+  Wilcox_boot_x1 <- c(Wilcox_boot_x1, wilcox.test(boot1_x1[,i], x1, paired = FALSE)$statistic)
+}
+
+will_original <- wilcox.test(x1, x1, paired = FALSE)$statistic
+
+print(will_original)
+
+options(warn = defaultW)
+```
+```{r}
+BOOTMEAN <- boot(x1,wilcox.test(),200)
+boot.ci(boot.out = BOOTMEAN, type = c("norm", "perc", "bca"))
+
+```
+
+
+
+
+
+
+## I.6 Compare your results to the results using t.test and wilcox.test.
+
+
+
+
+
+
+
+Task 2
+Consider the model y=3+2⋅x1+x2+e where x1 comes from a normal distribution with mean 2 and variance 3, x2 comes from a uniform distribution between 2 and 4 and e from a student's t distribution with 5 degrees of freedom . In addition, there is a predictor x3 coming from a uniform distribution between -2 and 2.
+
+Create a sample of size 200 from the model above and for the independent predictor x3 .
+Do residual bootstrap for linear regression and fit the model y∼x1+x2+x3 . Get the percentile CI for the coefficients. Can you exclude x3 ?
+Do pairs bootstrap for linear regression and fit the model y∼x1+x2+x3 . Get the percentile CI for the coefficients. Can you exclude x3 ?
+Compare the two approaches in 2. and 3. and explain the differences in the sampling approach and how this (might) affect(s) the results.
+Task 3
+Summarise the bootstrapping methodology, its advantages and disadvantages based on your exercises for constructing parametric and non-paramteric confidence bounds for estimators, test statistics or model estimates.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

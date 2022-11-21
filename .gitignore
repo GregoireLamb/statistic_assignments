@@ -1,0 +1,5 @@
+.Rhistory
+.RData
+no_sync/
+template.Rmd
+*.log
