@@ -9,8 +9,6 @@ header-includes:
 output: pdf_document
 ---
 
-Due: Wednesday, 23 November 2022, 8:00 PM
-
 # Task n°1
 Consider a two sample problem and the hypothesis $H_0:\mu1=\mu2 vs H_1:\mu1 \neq \mu2$ , where $\mu1$ and $\mu2$ are the corresponding sample locations. The two samples are:
 
@@ -18,7 +16,6 @@ Consider a two sample problem and the hypothesis $H_0:\mu1=\mu2 vs H_1:\mu1 \neq
 matricul.number <- 12202211
 x1 <- c(-0.673, -0.584, 0.572, -0.341, -0.218, 0.603, -0.415, -0.013, 0.763, 0.804, 0.054, 1.746, -0.472, 1.638, -0.578, 0.947, -0.329, -0.188, 0.794, 0.894, -1.227, 1.059)
 x2 <- c(0.913, -0.639, 2.99, -5.004, 3.118, 0.1, 1.128, 0.579, 0.32, -0.488, -0.994, -0.212, 0.413, 1.401, 0.007, 0.568, -0.005, 0.696)
-#x2 <- c(1000,1005,1007,1006,1009,1005,908,807)
 set.seed(matricul.number)
 ```
 
@@ -28,11 +25,12 @@ set.seed(matricul.number)
 library(ggplot2)
 par(mfrow=c(1,1))
 boxplot(x1,x2, main = "Comparison of x1 and x2", ylab = "value", names = c("x1", "x2"))
-points(x=1, y = mean(x1), col='red', pch=3)
-points(x=2, y = mean(x2), col='red', pch=3)
+points(x=1, y = mean(x1), col='red', pch=3, cex = 3)
+points(x=2, y = mean(x2), col='red', pch=3, cex = 3)
 legend(.5,-4 , legend=c(paste("sample mean: x1=",round(mean(x1),digits=4), " x2=",round(mean(x2),digits=4))),
        col=c("red"), lty=1:2, cex=0.8)
 ```
+
 ## I.2 Consider different sampling schemes
 - Sampling with replacement from each group
 - Centering both samples and then resample from the combined samples x1 and x2 for n1 and n2 times.
@@ -54,15 +52,9 @@ sampling_2 <- function(data1,data2,n1,n2, size1=length(data1),size2=length(data2
   sampl_x2 <- replicate(10000, sample(combined, size=size2, replace=TRUE))
   return(list("sampl_x1" = sampl_x1, "sampl_x2" = sampl_x2))
 }
-
-n=1
-boot1_x1 <- sampling_1(x1, n=n)
-boot1_x2 <- sampling_1(x2, n=n)
-
-boot2 <- sampling_2(x1,x2,n,n)
 ```
 *Argue for choice what is more natural and which advantages or disadvantages may apply.*   
-Our goal is to determine the whether the sample locations are the same. In the first case, we have the most common way to do it with bootsraping, we can estimate the parameter of x1 and x2 with their samples and use t-test to conclude on our hypothesis. The second method 
+Our goal is to determine the whether the sample locations are the same. In the first case, we have the most common and the most natural way to do it using bootstrapping. We can estimate the parameter of x1 and x2 with their bootstrap and use test statistic and compare their value to a test statistic computed with the original samples. With those comparison, we can obtain a p-value and conclude on our hypothesis. The second method is less common, we will use the exact same process as with method one but the main difference is that our test statistic values will contain less information on the mean since the bootsrap come from the same combined  values. But the comparison with the original test statistic value will enable us to obtain a similar result as befor. The second method may give better results if the samples size are significantly different but the first one is easier to understand. 
 
 
 ## I.3 Bootstrap using both strategies mentioned above using the t-test statistic. Calculate the bootstrap p-value based on 10'000 bootstrap samples and 0.95 as well as 0.99 confidence intervals. Make your decision at the significance level 0.05 or 0.01, respectively.
@@ -84,39 +76,21 @@ boot2 <- sampling_2(x1,x2,n,n)
 boot2_x1 <- boot2[[1]]
 boot2_x2 <- boot2[[2]]
 
-tests_x1 <- test_stat(x1,x2)
-tests_x2 <- test_stat(x2,x1)
+tests_x1 <- test_stat(x1,x2) #H0: x1 = x2
+tests_x2 <- test_stat(x2,x1) #H0: x2 = x1
 ```
 
 ```{r}
-#1 assuming location = mean 
 #Methode 1
-#means
-bootstap_means_x1 <- numeric(n)
-bootstap_means_x2 <- numeric(n)
-for(i in 1:n){
-  bootstap_means_x1[i] <- mean(boot1_x2[,i]) 
-  bootstap_means_x2[i] <- mean(boot1_x1[,i]) 
-}
-#sd 
-bootstap_sd_x1 <- numeric(n)
-bootstap_sd_x2 <- numeric(n)
-for(i in 1:n){
-  bootstap_sd_x1[i] <- sd(boot1_x2[,i]) 
-  bootstap_sd_x2[i] <- sd(boot1_x1[,i])
-}
 #test statistique 
 bootstap_tests_x1 <- numeric(n)
 bootstap_tests_x2 <- numeric(n)
-for(i in 1:n){
-  bootstap_tests_x1[i] <- (bootstap_means_x1[i] - mean_x2)/bootstap_sd_x1[i]
-  bootstap_tests_x2[i] <- (bootstap_means_x2[i] - mean_x1)/bootstap_sd_x2[i]
-}
-#p_values
 p_value_x1 <- 1
 p_value_x2 <- 1
 
 for(i in 1:n){
+  bootstap_tests_x1[i] <- test_stat(boot1_x2[,i],x2)
+  bootstap_tests_x2[i] <- test_stat(boot1_x1[,i],x1)
   if(abs(bootstap_tests_x1[i]) > abs(tests_x1)){
     p_value_x1 <- p_value_x1 + 1}
   if(abs(bootstap_tests_x2[i]) > abs(tests_x2)){
@@ -125,67 +99,82 @@ for(i in 1:n){
 p_value_x1 <- p_value_x1/(n+1)
 p_value_x2 <- p_value_x2/(n+1)
 
-print(paste('pvalue sampling mthod 1 ; x1=x2:', p_value_x1))
-print(paste('pvalue sampling mthod 1 ; x2=x2:', p_value_x2))
+# CI 
+a = .025 
+b = 1-a
 
-ci_1_x1_left <-  quantile(bootstap_means_x1, 0.025)
-ci_1_x1_right <-  quantile(bootstap_means_x1, 0.925)
-ci_1_x2_left <-  quantile(bootstap_means_x2, 0.025)
-ci_1_x2_right <-  quantile(bootstap_means_x2, 0.925)
+ci_1_x1 <-  quantile(bootstap_tests_x1,c(a,b))
+ci_1_x2 <-  quantile(bootstap_tests_x2, c(a,b))
 
-print(paste('ci 95% x1=x2: [', ci_1_x1_left,' : ',ci_1_x1_right ,']'))
-print(paste('ci 95% x2=x21 [', ci_1_x2_left,' : ',ci_1_x2_right ,']'))
+a = .005 
+b = 1-a
 
-ci_1_x1_left_99 <-  quantile(bootstap_means_x1, 0.005)
-ci_1_x1_right_99 <-  quantile(bootstap_means_x1, 0.995)
-ci_1_x2_left_99 <-  quantile(bootstap_means_x2, 0.005)
-ci_1_x2_right_99 <-  quantile(bootstap_means_x2, 0.995)
+ci_1_x1_99 <-  quantile(bootstap_tests_x1,c(a,b))
+ci_1_x2_99 <-  quantile(bootstap_tests_x2, c(a,b))
 
-print(paste('ci 99% x1=x2: [', ci_1_x1_left_99,' : ',ci_1_x1_right_99 ,']'))
-print(paste('ci 99% x2=x1: [', ci_1_x2_left_99,' : ',ci_1_x2_right_99 ,']'))
 ```
+
+Method n°1 
+hypothese | H0:x1=x2 | | 'H0:x1=x2'| |
+----------|----------|-|-----------|-|
+p_value   | `r p_value_x1` | | `r p_value_x2` | |
+CI 95%    | 2.5% | 97.5% | 2.5% | 97.5% 
+          | `r ci_1_x1[1]` | `r ci_1_x1[2]` | `r ci_1_x2[1]` | `r ci_1_x2_99[2]`
+CI 99%    | .5% | 99.5% | .5% | 99.5% 
+          | `r ci_1_x1_99[1]` | `r ci_1_x1_99[2]` | `r ci_1_x2_99[1]` | `r ci_1_x2_99[2]`
+
+
 
 ```{r}
-
+#Method 2
+# h0: x1=x2
 p_value2_x1 <- 1
-t_values = numeric(n)
-for(i in 1:n){
-    t_values[i] <- test_stat(boot2_x1[,i],boot2_x2[,i])  # bootstrap test statistic
-    if( (abs(t_values[i]) > abs(tests_x1)) ){
-      p_value2_x1 <- p_value2_x1 + 1}
-}
-p_value2_x1 <- p_value2_x1/(n+1)
-
+t_values1 = numeric(n)
+# h0: x2=x1
 p_value2_x2 <- 1
 t_values2 = numeric(n)
+
 for(i in 1:n){
-    t_values2[i] <- test_stat(boot2_x2[,i],boot2_x1[,i])  # bootstrap test statistic
-    if( (abs(t_values[i]) > abs(tests_x2)) ){
+    t_values1[i] <- test_stat(boot2_x1[,i],boot2_x2[,i])  # bootstrap test statistic
+    if( (abs(t_values1[i]) > abs(tests_x1)) ){
+      p_value2_x1 <- p_value2_x1 + 1}
+     t_values2[i] <- test_stat(boot2_x2[,i],boot2_x1[,i])  # bootstrap test statistic
+    if( (abs(t_values2[i]) > abs(tests_x2)) ){
       p_value2_x2 <- p_value2_x2 + 1}
 }
+
+p_value2_x1 <- p_value2_x1/(n+1)
 p_value2_x2 <- p_value2_x2/(n+1)
 
-print(paste('pvalue sampling method 2 ; x1=x2:', p_value2_x1))
-print(paste('pvalue sampling method 2 ; x2=x2:', p_value2_x2))
 
-ci_2_x1_left <-  quantile(bootstap_means_x1, 0.025)
-ci_2_x1_right <-  quantile(bootstap_means_x1, 0.925)
-ci_2_x2_left <-  quantile(bootstap_means_x2, 0.025)
-ci_2_x2_right <-  quantile(bootstap_means_x2, 0.925)
+# CI 
+a = .025 
+b = 1-a
 
-print(paste('ci 95% x1=x2: [', ci_1_x1_left,' : ',ci_1_x1_right ,']'))
-print(paste('ci 95% x2=x21 [', ci_1_x2_left,' : ',ci_1_x2_right ,']'))
+ci_2_x1 <-  quantile(t_values1,c(a,b))
+ci_2_x2 <-  quantile(t_values2, c(a,b))
 
-ci_2_x1_left_99 <-  quantile(bootstap_means_x1, 0.005)
-ci_2_x1_right_99 <-  quantile(bootstap_means_x1, 0.995)
-ci_2_x2_left_99 <-  quantile(bootstap_means_x2, 0.005)
-ci_2_x2_right_99 <-  quantile(bootstap_means_x2, 0.995)
+a = .005 
+b = 1-a
 
-print(paste('ci 99% x1=x2: [', ci_1_x1_left_99,' : ',ci_1_x1_right_99 ,']'))
-print(paste('ci 99% x2=x1: [', ci_1_x2_left_99,' : ',ci_1_x2_right_99 ,']'))
+ci_2_x1_99 <-  quantile(t_values1,c(a,b))
+ci_2_x2_99 <-  quantile(t_values2, c(a,b))
+
 ```
 
 
+Method n°2
+hypothese | H0:x1=x2 | | 'H0:x1=x2'| |
+----------|----------|-|-----------|-|
+p_value   | `r p_value2_x1` | | `r p_value2_x2` | |
+CI 95%    | 2.5% | 97.5% | 2.5% | 97.5% 
+          | `r ci_2_x1[1]` | `r ci_2_x1[2]` | `r ci_2_x2[1]` | `r ci_2_x2[2]`
+CI 99%    | .5% | 99.5% | .5% | 99.5% 
+          | `r ci_2_x1_99[1]` | `r ci_2_x1_99[2]` | `r ci_2_x2_99[1]` | `r ci_2_x2_99[2]`
+          
+BLABLA BLA 
+
+          
 ## I.4 What would be a permutation version of the test? Implement the corresponding permutation test and obtain p-value and confidence intervals as in 3. to get a corresponding test decision at the same significance levels.
  
 A permutation version of the test would be a permutation of the values between x1 and x2.  
@@ -203,8 +192,8 @@ for (i in 1:n) {
   boot_x1 <- combined[x1_indices]
   boot_x2 <- setdiff(combined, boot_x1)
   
-  t_stat_x1 <- c(t_stat_x1, ((mean(boot_x1)-mean(x2)) / sd(boot_x1)))
-  t_stat_x2 <- c(t_stat_x2, ((mean(boot_x2)-mean(x1)) / sd(boot_x2)))
+  t_stat_x1 <- c(t_stat_x1, test_stat(boot_x1,x2))
+  t_stat_x2 <- c(t_stat_x2, test_stat(boot_x2,x1))
 }
 
 p_value_x1 <- 1
@@ -216,75 +205,243 @@ for(i in 1:n){
   if(abs(t_stat_x2[i]) > abs(tests_x2)){
     p_value_x2 <- p_value_x2 + 1}
 }
-p_value_x1 <- p_value_x1/(n+1)
-p_value_x2 <- p_value_x2/(n+1)
+p_value3_x1 <- p_value_x1/(n+1)
+p_value3_x2 <- p_value_x2/(n+1)
 
-hist(t_stat_x1)
-abline(v = abs(tests_x1) )
-hist(t_stat_x2)
-abline(v = abs(tests_x2) )
+# CI 
+a = .025 
+b = 1-a
 
-print(paste('pval x1=x2', p_value_x1))
-print(paste('pval x2=x1', p_value_x2))
+ci_3_x1 <-  quantile(t_stat_x1,c(a,b))
+ci_3_x2 <-  quantile(t_stat_x2, c(a,b))
+
+a = .005 
+b = 1-a
+
+ci_3_x1_99 <-  quantile(t_values1,c(a,b))
+ci_3_x2_99 <-  quantile(t_values2, c(a,b))
 ```
 
-```{r}
-library(boot)
-my.mean <- function(x,i) mean(x[i])
-BOOTMEAN <- boot(x1,my.mean,200)
-boot.ci(boot.out = BOOTMEAN, type = c("norm", "perc", "bca"))
-```
+Permutation
+
+hypothese | H0:x1=x2 | | 'H0:x1=x2'| |
+----------|----------|-|-----------|-|
+p_value   | `r p_value3_x1` | | `r p_value3_x2` | |
+CI 95%    | 2.5% | 97.5% | 2.5% | 97.5% 
+          | `r ci_3_x1[1]` | `r ci_3_x1[2]` | `r ci_3_x2[1]` | `r ci_3_x2[2]`
+CI 99%    | .5% | 99.5% | .5% | 99.5% 
+          | `r ci_3_x1_99[1]` | `r ci_3_x1_99[2]` | `r ci_3_x2_99[1]` | `r ci_3_x2_99[2]`
 
 
 ## I.5 The Wilxocon rank sum test statistic is the sum of ranks of the observations of sample 1 computed in the combined sample. Use bootstrapping with both strategies mentioned above and obtain p-value and confidence intervals as in 3. to get a corresponding test decision at the same significance levels.
+```{r setup, include=FALSE} 
+knitr::opts_chunk$set(warning = FALSE, message = FALSE) 
+```
+
+
 ```{r}
 # First method
-
-## x1
-n <- 200
-defaultW <- getOption("warn")
-options(warn = -1)
-
-
 Wilcox_boot_x1 <- c()
 for(i in 1:n){
-  Wilcox_boot_x1 <- c(Wilcox_boot_x1, wilcox.test(boot1_x1[,i], x1, paired = FALSE)$statistic)
+  Wilcox_boot_x1 <- c(Wilcox_boot_x1, wilcox.test(boot1_x1[,i], x2, paired = FALSE)$statistic)
 }
 
-will_original <- wilcox.test(x1, x1, paired = FALSE)$statistic
+will_original <- wilcox.test(x1, x2, paired = FALSE)$statistic
+print(paste('will_original HO=x1=x2',will_original))
 
-print(will_original)
+p_value_x1 <- 1
+for(i in 1:n){
+  if(abs(Wilcox_boot_x1[i]) > abs(will_original)){
+    p_value_x1 <- p_value_x1 + 1}
+}
+p_value_x1 <- p_value_x1/(n+1)
+print(p_value_x1)
 
-options(warn = defaultW)
+
+Wilcox_boot_x2 <- c()
+for(i in 1:n){
+  Wilcox_boot_x2 <- c(Wilcox_boot_x2, wilcox.test(boot1_x2[,i], x1, paired = FALSE)$statistic)
+}
+will_original2 <- wilcox.test(x2, x1, paired = FALSE)$statistic
+print(paste('will_original HO=x1=x2',will_original2))
+
+p_value_x2 <- 1
+for(i in 1:n){
+  if(abs(Wilcox_boot_x2[i]) > abs(will_original2)){
+    p_value_x2 <- p_value_x2 + 1}
+}
+p_value_x2 <- p_value_x2/(n+1)
+print(p_value_x2)
+
+
+
+# Saecond method
+## x1
+Wilcox_boot_x1_2 <- c()
+for(i in 1:n){
+  Wilcox_boot_x1_2 <- c(Wilcox_boot_x1_2, wilcox.test(boot2_x1[,i], x2, paired = FALSE)$statistic)
+}
+p_value_x1_2 <- 1
+for(i in 1:n){
+  if(abs(Wilcox_boot_x1_2[i]) > abs(will_original)){
+    p_value_x1_2 <- p_value_x1_2 + 1}
+}
+p_value_x1_2 <- p_value_x1_2/(n+1)
+print(paste('p_value_x1_2',p_value_x1_2))
+
+## x2
+Wilcox_boot_x2_2 <- c()
+for(i in 1:n){
+  Wilcox_boot_x2_2 <- c(Wilcox_boot_x2_2, wilcox.test(boot2_x2[,i], x1, paired = FALSE)$statistic)
+}
+p_value_x2_2 <- 1
+for(i in 1:n){
+  if(abs(Wilcox_boot_x2_2[i]) > abs(will_original2)){
+    p_value_x2_2 <- p_value_x2_2 + 1}
+}
+p_value_x2_2 <- p_value_x2_2/(n+1)
+print(paste('p_value_x2_2',p_value_x2_2))
+
+
+
+# CI 
+a = .025 
+b = 1-a
+
+ci_Wilcox_boot_x1 <-  quantile(Wilcox_boot_x1,c(a,b))
+ci_Wilcox_boot_x2 <-  quantile(Wilcox_boot_x2, c(a,b))
+Wilcox_boot_x1_2 <-  quantile(Wilcox_boot_x1_2,c(a,b))
+Wilcox_boot_x2_2 <-  quantile(Wilcox_boot_x2_2, c(a,b))
+
+a = .005 
+b = 1-a
+
+ci_Wilcox_boot_x1_99 <-  quantile(Wilcox_boot_x1,c(a,b))
+ci_Wilcox_boot_x2_99 <-  quantile(Wilcox_boot_x2, c(a,b))
+Wilcox_boot_x1_2_99 <-  quantile(Wilcox_boot_x1_2,c(a,b))
+Wilcox_boot_x2_2_99 <-  quantile(Wilcox_boot_x2_2, c(a,b))
+
+print('-----')
+p_value_x1
+ci_Wilcox_boot_x1
+ci_Wilcox_boot_x1_99
+
+p_value_x2
+ci_Wilcox_boot_x2
+ci_Wilcox_boot_x2_99
+
+p_value_x1_2
+Wilcox_boot_x1_2
+Wilcox_boot_x1_2_99
+
+p_value_x2_2
+Wilcox_boot_x2_2
+Wilcox_boot_x2_2_99
+
 ```
-```{r}
-BOOTMEAN <- boot(x1,wilcox.test(),200)
-boot.ci(boot.out = BOOTMEAN, type = c("norm", "perc", "bca"))
-
-```
-
-
-
-
 
 
 ## I.6 Compare your results to the results using t.test and wilcox.test.
 
+```{r}
+wilcox <- wilcox.test(x1, x2, paired = FALSE)
+wilcox
+wilcox <- wilcox.test(x2, x1, paired = FALSE)
+wilcox
+ttest <- t.test(x1,x2, paired = FALSE)
+ttest
+ttest <- t.test(x2,x1, paired = FALSE)
+ttest
+
+```
 
 
+# Task n°2
+Consider the model $y=3+2*x1+x2+e$ where x1 comes from a normal distribution with mean 2 and variance 3, x2 comes from a uniform distribution between 2 and 4 and e from a student's t distribution with 5 degrees of freedom . In addition, there is a predictor x3 coming from a uniform distribution between -2 and 2.
+```{r}
+model <- function(n){
+  x1 <-  rnorm(n, mean = 2, sd = 3)
+  x2 <- runif(n, min = 2, max = 4)
+  eps <- rt(n, df = 5)
+  x3 <- runif(n, min = -2, max = 2)
+  y <- 3+ 2*x1 + x2 + eps
+  df <- data.frame(y,x1,x2,x3)
+  return(df)
+}
+
+x3  <- function(){
+  return(runif(1,-2,2))
+}
+```
+
+## II.1 Create a sample of size 200 from the model above and for the independent predictor x3.
+```{r}
+n <- 2000
+data <- model(n)
+```
 
 
+## II.2 Do residual bootstrap for linear regression and fit the model y follow x1+x2+x3 . Get the percentile CI for the coefficients. Can you exclude x3 ?
+```{r}
+library(boot)
 
+fit <- lm(y~., data=data)
+hist(fit$residuals, breaks = 100)
+```
+The residual distribution seems to follow a normal distribution, we will use a parametric bootsrap. 
 
-Task 2
-Consider the model y=3+2⋅x1+x2+e where x1 comes from a normal distribution with mean 2 and variance 3, x2 comes from a uniform distribution between 2 and 4 and e from a student's t distribution with 5 degrees of freedom . In addition, there is a predictor x3 coming from a uniform distribution between -2 and 2.
+```{r, echo=TRUE, tidy=TRUE, warning=FALSE}
+reg.fun <- function(x){
+  return(coef(lm(y ~ x1+x2+x3, data = x)))
+}
+reg.sim <- function(x, resi){
+  x$y <- (resi$yhat + sample(resi$res, replace = TRUE))
+  return(x)
+}
 
-Create a sample of size 200 from the model above and for the independent predictor x3 .
-Do residual bootstrap for linear regression and fit the model y∼x1+x2+x3 . Get the percentile CI for the coefficients. Can you exclude x3 ?
-Do pairs bootstrap for linear regression and fit the model y∼x1+x2+x3 . Get the percentile CI for the coefficients. Can you exclude x3 ?
+res <- resid(fit)
+yhat <- fitted(fit)
+reg2 <- data.frame(yhat, res)
+
+fit.boot <- boot(data, reg.fun, R=1000, sim="parametric", ran.gen=reg.sim, mle = reg2)
+x1_coef_ci <- quantile(fit.boot$t[,2], c(0.01,0.05,0.95, 0.99))
+x2_coef_ci <- quantile(fit.boot$t[,3], c(0.01,0.05,0.95, 0.99))
+x3_coef_ci <- quantile(fit.boot$t[,4],  c(0.01,0.05,0.95, 0.99))
+print(" precentile CI for the x1 coefficients in case of residual bootstraps")
+x1_coef_ci
+print(" precentile CI for the x2 coefficients in case of residual bootstraps")
+x2_coef_ci
+print(" precentile CI for the x3 coefficients in case of residual bootstraps")
+x3_coef_ci
+```
+
+Do residual bootstrap for linear regression and fit the model yziguigui x1+x2+x3 . Get the percentile CI for the coefficients. Can you exclude x3 ?
+Do pairs bootstrap for linear regression and fit the model yfollowx1+x2+x3 . Get the percentile CI for the coefficients. Can you exclude x3 ?
 Compare the two approaches in 2. and 3. and explain the differences in the sampling approach and how this (might) affect(s) the results.
+
+
+asymptotically they are equivalent when the model is correctly
+specified.
+I they perform quite differently for small samples and for the
+correct model the residual version is more efficient.
+I the pairs strategy is often considered more robust when the
+model is misspecified.
+
 Task 3
 Summarise the bootstrapping methodology, its advantages and disadvantages based on your exercises for constructing parametric and non-paramteric confidence bounds for estimators, test statistics or model estimates.
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
