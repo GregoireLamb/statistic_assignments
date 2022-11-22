@@ -70,81 +70,66 @@ n=10000
 mean_x1 = mean(x1)
 mean_x2 = mean(x2)
 boot1_x1<- sampling_1(x1, n=n)
-boot1_x2 <- sampling_1(x2, n=n)
+boot1_x2<- sampling_1(x2, n=n)
 
 boot2 <- sampling_2(x1,x2,n,n)
 boot2_x1 <- boot2[[1]]
 boot2_x2 <- boot2[[2]]
 
 tests_x1 <- test_stat(x1,x2) #H0: x1 = x2
-tests_x2 <- test_stat(x2,x1) #H0: x2 = x1
 ```
 
 ```{r}
 #Methode 1
-#test statistique 
+#test statistic 
 bootstap_tests_x1 <- numeric(n)
-bootstap_tests_x2 <- numeric(n)
 p_value_x1 <- 1
-p_value_x2 <- 1
 
 for(i in 1:n){
   bootstap_tests_x1[i] <- test_stat(boot1_x2[,i],x2)
-  bootstap_tests_x2[i] <- test_stat(boot1_x1[,i],x1)
   if(abs(bootstap_tests_x1[i]) > abs(tests_x1)){
     p_value_x1 <- p_value_x1 + 1}
-  if(abs(bootstap_tests_x2[i]) > abs(tests_x2)){
-    p_value_x2 <- p_value_x2 + 1}
 }
 p_value_x1 <- p_value_x1/(n+1)
-p_value_x2 <- p_value_x2/(n+1)
 
 # CI 
 a = .025 
 b = 1-a
 
 ci_1_x1 <-  quantile(bootstap_tests_x1,c(a,b))
-ci_1_x2 <-  quantile(bootstap_tests_x2, c(a,b))
 
 a = .005 
 b = 1-a
 
 ci_1_x1_99 <-  quantile(bootstap_tests_x1,c(a,b))
-ci_1_x2_99 <-  quantile(bootstap_tests_x2, c(a,b))
 
 ```
 
 Method n°1 
-hypothese | H0:x1=x2 | | 'H0:x1=x2'| |
-----------|----------|-|-----------|-|
-p_value   | `r p_value_x1` | | `r p_value_x2` | |
-CI 95%    | 2.5% | 97.5% | 2.5% | 97.5% 
-          | `r ci_1_x1[1]` | `r ci_1_x1[2]` | `r ci_1_x2[1]` | `r ci_1_x2_99[2]`
-CI 99%    | .5% | 99.5% | .5% | 99.5% 
-          | `r ci_1_x1_99[1]` | `r ci_1_x1_99[2]` | `r ci_1_x2_99[1]` | `r ci_1_x2_99[2]`
 
+hypothese | H0:x1=x2 |  
+----------|----------|--------
+p_value| `r p_value_x1`  |
+CI     | 2.5% | 97.5%  
+95%    | `r ci_1_x1[1]` | `r ci_1_x1[2]`  
+CI     | .5% | 99.5% 
+99%    | `r ci_1_x1_99[1]` | `r ci_1_x1_99[2]` 
 
+The p_value we obtained is very high, based on that we can not reject the null hypothesis, x1 and x2 might have the same location.  
 
 ```{r}
 #Method 2
 # h0: x1=x2
 p_value2_x1 <- 1
 t_values1 = numeric(n)
-# h0: x2=x1
-p_value2_x2 <- 1
-t_values2 = numeric(n)
 
 for(i in 1:n){
     t_values1[i] <- test_stat(boot2_x1[,i],boot2_x2[,i])  # bootstrap test statistic
     if( (abs(t_values1[i]) > abs(tests_x1)) ){
       p_value2_x1 <- p_value2_x1 + 1}
-     t_values2[i] <- test_stat(boot2_x2[,i],boot2_x1[,i])  # bootstrap test statistic
-    if( (abs(t_values2[i]) > abs(tests_x2)) ){
-      p_value2_x2 <- p_value2_x2 + 1}
 }
 
 p_value2_x1 <- p_value2_x1/(n+1)
-p_value2_x2 <- p_value2_x2/(n+1)
 
 
 # CI 
@@ -152,27 +137,26 @@ a = .025
 b = 1-a
 
 ci_2_x1 <-  quantile(t_values1,c(a,b))
-ci_2_x2 <-  quantile(t_values2, c(a,b))
 
 a = .005 
 b = 1-a
 
 ci_2_x1_99 <-  quantile(t_values1,c(a,b))
-ci_2_x2_99 <-  quantile(t_values2, c(a,b))
 
 ```
 
 
-Method n°2
-hypothese | H0:x1=x2 | | 'H0:x1=x2'| |
-----------|----------|-|-----------|-|
-p_value   | `r p_value2_x1` | | `r p_value2_x2` | |
-CI 95%    | 2.5% | 97.5% | 2.5% | 97.5% 
-          | `r ci_2_x1[1]` | `r ci_2_x1[2]` | `r ci_2_x2[1]` | `r ci_2_x2[2]`
-CI 99%    | .5% | 99.5% | .5% | 99.5% 
-          | `r ci_2_x1_99[1]` | `r ci_2_x1_99[2]` | `r ci_2_x2_99[1]` | `r ci_2_x2_99[2]`
-          
-BLABLA BLA 
+Method n°2      
+
+hypotheses | H0:x1=x2         | 
+-----------|------------------|-----------
+p_value    | `r p_value2_x1`  |  
+CI         | 2.5%             | 97.5% 
+95%        | `r ci_2_x1[1]`   | `r ci_2_x1[2]` 
+CI         | .5%              | 99.5% 
+99%        | `r ci_2_x1_99[1]`| `r ci_2_x1_99[2]`    
+           
+The p_value we obtained is very high, based on that we cannot reject the null hypothesis, x1 and x2 might have the same location.   
 
           
 ## I.4 What would be a permutation version of the test? Implement the corresponding permutation test and obtain p-value and confidence intervals as in 3. to get a corresponding test decision at the same significance levels.
@@ -184,54 +168,44 @@ indices <- seq(from = 1, to = length(x1) + length(x2), by = 1)
 combined <- c(x1, x2)
 
 t_stat_x1 <- c()
-t_stat_x2 <- c()
 
 for (i in 1:n) {
   x1_indices <- sample(indices, size = length(x1), replace = FALSE)
-  
   boot_x1 <- combined[x1_indices]
-  boot_x2 <- setdiff(combined, boot_x1)
-  
   t_stat_x1 <- c(t_stat_x1, test_stat(boot_x1,x2))
-  t_stat_x2 <- c(t_stat_x2, test_stat(boot_x2,x1))
 }
 
 p_value_x1 <- 1
-p_value_x2 <- 1
 
 for(i in 1:n){
   if(abs(t_stat_x1[i]) > abs(tests_x1)){
     p_value_x1 <- p_value_x1 + 1}
-  if(abs(t_stat_x2[i]) > abs(tests_x2)){
-    p_value_x2 <- p_value_x2 + 1}
 }
 p_value3_x1 <- p_value_x1/(n+1)
-p_value3_x2 <- p_value_x2/(n+1)
 
 # CI 
 a = .025 
 b = 1-a
 
 ci_3_x1 <-  quantile(t_stat_x1,c(a,b))
-ci_3_x2 <-  quantile(t_stat_x2, c(a,b))
 
 a = .005 
 b = 1-a
 
 ci_3_x1_99 <-  quantile(t_values1,c(a,b))
-ci_3_x2_99 <-  quantile(t_values2, c(a,b))
 ```
 
 Permutation
 
-hypothese | H0:x1=x2 | | 'H0:x1=x2'| |
-----------|----------|-|-----------|-|
-p_value   | `r p_value3_x1` | | `r p_value3_x2` | |
-CI 95%    | 2.5% | 97.5% | 2.5% | 97.5% 
-          | `r ci_3_x1[1]` | `r ci_3_x1[2]` | `r ci_3_x2[1]` | `r ci_3_x2[2]`
-CI 99%    | .5% | 99.5% | .5% | 99.5% 
-          | `r ci_3_x1_99[1]` | `r ci_3_x1_99[2]` | `r ci_3_x2_99[1]` | `r ci_3_x2_99[2]`
+hypotheses | H0:x1=x2 |  
+----------|----------|---
+p_value   | `r p_value3_x1` | 
+CI      | 2.5% | 97.5%  
+95%     | `r ci_3_x1[1]` | `r ci_3_x1[2]` 
+CI      | .5% | 99.5% 
+99%     | `r ci_3_x1_99[1]` | `r ci_3_x1_99[2]` 
 
+Our p_value is once again very high, we still cannot reject H0.
 
 ## I.5 The Wilxocon rank sum test statistic is the sum of ranks of the observations of sample 1 computed in the combined sample. Use bootstrapping with both strategies mentioned above and obtain p-value and confidence intervals as in 3. to get a corresponding test decision at the same significance levels.
 ```{r setup, include=FALSE} 
@@ -245,9 +219,7 @@ Wilcox_boot_x1 <- c()
 for(i in 1:n){
   Wilcox_boot_x1 <- c(Wilcox_boot_x1, wilcox.test(boot1_x1[,i], x2, paired = FALSE)$statistic)
 }
-
 will_original <- wilcox.test(x1, x2, paired = FALSE)$statistic
-print(paste('will_original HO=x1=x2',will_original))
 
 p_value_x1 <- 1
 for(i in 1:n){
@@ -255,28 +227,8 @@ for(i in 1:n){
     p_value_x1 <- p_value_x1 + 1}
 }
 p_value_x1 <- p_value_x1/(n+1)
-print(p_value_x1)
-
-
-Wilcox_boot_x2 <- c()
-for(i in 1:n){
-  Wilcox_boot_x2 <- c(Wilcox_boot_x2, wilcox.test(boot1_x2[,i], x1, paired = FALSE)$statistic)
-}
-will_original2 <- wilcox.test(x2, x1, paired = FALSE)$statistic
-print(paste('will_original HO=x1=x2',will_original2))
-
-p_value_x2 <- 1
-for(i in 1:n){
-  if(abs(Wilcox_boot_x2[i]) > abs(will_original2)){
-    p_value_x2 <- p_value_x2 + 1}
-}
-p_value_x2 <- p_value_x2/(n+1)
-print(p_value_x2)
-
-
 
 # Saecond method
-## x1
 Wilcox_boot_x1_2 <- c()
 for(i in 1:n){
   Wilcox_boot_x1_2 <- c(Wilcox_boot_x1_2, wilcox.test(boot2_x1[,i], x2, paired = FALSE)$statistic)
@@ -287,58 +239,27 @@ for(i in 1:n){
     p_value_x1_2 <- p_value_x1_2 + 1}
 }
 p_value_x1_2 <- p_value_x1_2/(n+1)
-print(paste('p_value_x1_2',p_value_x1_2))
-
-## x2
-Wilcox_boot_x2_2 <- c()
-for(i in 1:n){
-  Wilcox_boot_x2_2 <- c(Wilcox_boot_x2_2, wilcox.test(boot2_x2[,i], x1, paired = FALSE)$statistic)
-}
-p_value_x2_2 <- 1
-for(i in 1:n){
-  if(abs(Wilcox_boot_x2_2[i]) > abs(will_original2)){
-    p_value_x2_2 <- p_value_x2_2 + 1}
-}
-p_value_x2_2 <- p_value_x2_2/(n+1)
-print(paste('p_value_x2_2',p_value_x2_2))
-
-
 
 # CI 
 a = .025 
 b = 1-a
-
 ci_Wilcox_boot_x1 <-  quantile(Wilcox_boot_x1,c(a,b))
-ci_Wilcox_boot_x2 <-  quantile(Wilcox_boot_x2, c(a,b))
 Wilcox_boot_x1_2 <-  quantile(Wilcox_boot_x1_2,c(a,b))
-Wilcox_boot_x2_2 <-  quantile(Wilcox_boot_x2_2, c(a,b))
-
 a = .005 
 b = 1-a
-
 ci_Wilcox_boot_x1_99 <-  quantile(Wilcox_boot_x1,c(a,b))
-ci_Wilcox_boot_x2_99 <-  quantile(Wilcox_boot_x2, c(a,b))
 Wilcox_boot_x1_2_99 <-  quantile(Wilcox_boot_x1_2,c(a,b))
-Wilcox_boot_x2_2_99 <-  quantile(Wilcox_boot_x2_2, c(a,b))
-
-print('-----')
-p_value_x1
-ci_Wilcox_boot_x1
-ci_Wilcox_boot_x1_99
-
-p_value_x2
-ci_Wilcox_boot_x2
-ci_Wilcox_boot_x2_99
-
-p_value_x1_2
-Wilcox_boot_x1_2
-Wilcox_boot_x1_2_99
-
-p_value_x2_2
-Wilcox_boot_x2_2
-Wilcox_boot_x2_2_99
 
 ```
+Wilcox
+
+Methode | sampling 1 |  |sampling 2 |
+----------|----------|---|----------|-------
+p_value   | `r p_value_x1` | |`r p_value_x1_2`| 
+CI      | 2.5% | 97.5%  | 2.5% | 97.5%  
+95%     | `r ci_Wilcox_boot_x1[1]` | `r ci_Wilcox_boot_x1[2]` | `r Wilcox_boot_x1_2[1]` | `r Wilcox_boot_x1_2[2]` 
+CI      | .5% | 99.5% | .5% | 99.5% 
+99%     | `r ci_Wilcox_boot_x1_99[1]` | `r ci_Wilcox_boot_x1_99[2]` | `r Wilcox_boot_x1_2_99[1]` | `r Wilcox_boot_x1_2_99[2]` 
 
 
 ## I.6 Compare your results to the results using t.test and wilcox.test.
@@ -346,15 +267,11 @@ Wilcox_boot_x2_2_99
 ```{r}
 wilcox <- wilcox.test(x1, x2, paired = FALSE)
 wilcox
-wilcox <- wilcox.test(x2, x1, paired = FALSE)
-wilcox
 ttest <- t.test(x1,x2, paired = FALSE)
-ttest
-ttest <- t.test(x2,x1, paired = FALSE)
 ttest
 
 ```
-
+We can make the same conclusion with the boostraps we did and the result from the tests.  
 
 # Task n°2
 Consider the model $y=3+2*x1+x2+e$ where x1 comes from a normal distribution with mean 2 and variance 3, x2 comes from a uniform distribution between 2 and 4 and e from a student's t distribution with 5 degrees of freedom . In addition, there is a predictor x3 coming from a uniform distribution between -2 and 2.
@@ -404,35 +321,59 @@ yhat <- fitted(fit)
 reg2 <- data.frame(yhat, res)
 
 fit.boot <- boot(data, reg.fun, R=1000, sim="parametric", ran.gen=reg.sim, mle = reg2)
-x1_coef_ci <- quantile(fit.boot$t[,2], c(0.01,0.05,0.95, 0.99))
-x2_coef_ci <- quantile(fit.boot$t[,3], c(0.01,0.05,0.95, 0.99))
-x3_coef_ci <- quantile(fit.boot$t[,4],  c(0.01,0.05,0.95, 0.99))
-print(" precentile CI for the x1 coefficients in case of residual bootstraps")
-x1_coef_ci
-print(" precentile CI for the x2 coefficients in case of residual bootstraps")
-x2_coef_ci
-print(" precentile CI for the x3 coefficients in case of residual bootstraps")
-x3_coef_ci
+x1_coef_ci <- quantile(fit.boot$t[,2], c(0.005,0.025,0.975, 0.995))
+x2_coef_ci <- quantile(fit.boot$t[,3], c(0.005,0.025,0.975, 0.995))
+x3_coef_ci <- quantile(fit.boot$t[,4],  c(0.005,0.025,0.975, 0.995))
+
+
+df <- data.frame(
+  x1 = x1_coef_ci,
+  x2 = x2_coef_ci,
+  x3 = x3_coef_ci
+)
+
+knitr::kable(df, caption="CI for paramters")
 ```
 
-Do residual bootstrap for linear regression and fit the model yziguigui x1+x2+x3 . Get the percentile CI for the coefficients. Can you exclude x3 ?
-Do pairs bootstrap for linear regression and fit the model yfollowx1+x2+x3 . Get the percentile CI for the coefficients. Can you exclude x3 ?
-Compare the two approaches in 2. and 3. and explain the differences in the sampling approach and how this (might) affect(s) the results.
+Thanks to the confidence interval in the previous graph we can assume that x3 is not significant and we can exclude x3. 
 
 
-asymptotically they are equivalent when the model is correctly
-specified.
-I they perform quite differently for small samples and for the
-correct model the residual version is more efficient.
-I the pairs strategy is often considered more robust when the
-model is misspecified.
+## II.3 Do pairs bootstrap for linear regression and fit the model yfollowx1+x2+x3 . Get the percentile CI for the coefficients. Can you exclude x3 ?
 
-Task 3
-Summarise the bootstrapping methodology, its advantages and disadvantages based on your exercises for constructing parametric and non-paramteric confidence bounds for estimators, test statistics or model estimates.
+```{r, echo=TRUE, tidy=TRUE, warning=FALSE}
+fit <- lm(y ~ x1+x2+x3, data = data)
+res <- resid(fit)
+yhat <- fitted(fit)
+reg_model <- data.frame(yhat, res)
+reg_fun <- function(x, idx){
+  return(coef(lm(y ~ x1+x2+x3, data = x[idx, ])))
+}
 
+fit.boot_pairs <- boot(data, reg_fun, R = 1000)
 
+bot_pair_sol <- fit.boot_pairs$t
+x1_coef_pairs <- quantile(bot_pair_sol[,2], c(0.005,0.025,0.975, 0.995))
+x2_coef_pairs <- quantile(bot_pair_sol[,3], c(0.005,0.025,0.975, 0.995))
+x3_coef_pairs <- quantile(bot_pair_sol[,4], c(0.005,0.025,0.975, 0.995))
 
+df <- data.frame(
+  x1 = x1_coef_ci,
+  x2 = x2_coef_ci,
+  x3 = x3_coef_ci
+)
 
+knitr::kable(df, caption="CI for paramters")
+```
+
+Our result are very similar to what we obtained with residual bootstrap, we can also conclude that x3 is non significant. 
+
+## II.4 Compare the two approaches in 2. and 3. and explain the differences in the sampling approach and how this (might) affect(s) the results.
+
+Th main difference between this 2 approach is the assumption in the first case that our residuals follow a normal distribution. In the second case, no assumption is made. In the residual bootrap, the new sample are generated wheras in the pair bootstrap, they are picked in the computed residuals. Asymptotically the 2 methods are equivalent when the model is correctly specified. They perform quite differently for small samples and for the correct model the residual version is more efficient. The pairs strategy is often considered more robust when the model is misspecified.
+
+# Task n°3 :Summaries the bootstrapping methodology, its advantages and disadvantages based on your exercises for constructing parametric and non-paramteric confidence bounds for estimators, test statistics or model estimates.
+
+To put it in a nutshell, bootstrapping consist of approaching a statistic magnitude (estimators, test statistics or model estimates) with samples. These samples called bootstrap are computed by randomly sampling the original dataset with replacement or they are generated under the hypothesis the values used to compute this magnitude follow a normal distribution. The method offers a very convenient way to compute confidence intervals. Bootstrap can give good point of view on the magnitude as long as the calcul are not to long. 
 
 
 
