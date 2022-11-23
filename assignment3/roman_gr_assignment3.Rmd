@@ -9,6 +9,7 @@ toc: true
 
 ## Task 1
 Consider the integral $\int_{1}^{b} e^{-x^3}$
+
 ### Task 1.1
 Use uniformly distributed random variables to approximate the integral for b = 6 (using Monte Carlo integration). Then use the function integrate for comparison.
 
@@ -27,6 +28,7 @@ us <- runif(n, min = a, max = b)
 mean(f(us)) * (b-a)
 ```
 Monte Carlo Integral: 0.08462263
+
 
 Computation of the integral of the target function.
 ```{r}
@@ -95,7 +97,6 @@ n_lims = 10^5
 ```
 
 
-Function below is taken from the sample solution.
 ```{r}
 x_lims <- runif(n_lims, min=-3, max=3)
 y_lims <- runif(n_lims, min=-2, max=3.5)
@@ -126,7 +127,7 @@ for (i in 1:n_lims){
 ```
 
 To illustrate the result of the simulation we can illustrate the outcome visually, where red color indicates that the generated point is outside of the defined function and red - that it is inside.
-```{r}
+```{r fig.show="hold", out.width="50%"}
 library(ggplot2)
 df <- data.frame(x_lims, y_lims, ind)
 
@@ -138,7 +139,7 @@ ggplot()+
 ### Task 2.3
 Simulate 100, 1000, 10000 and 100000 random coordinates and calculate the percentage of the points within the enclosed area. Based on this information estimate the area of the figure. Sumarise those values in a table and visualize them in plots of the function curve and enclosed area.
 
-```{r}
+```{r fig.show="hold", out.width="50%"}
 n_lims = 10^2
 x_lims <- runif(n_lims, min=-3, max=3)
 y_lims <- runif(n_lims, min=-2, max=3.5)
@@ -157,7 +158,7 @@ ggplot()+
   geom_path(aes(x=x, y=y))
 ```
 
-```{r}
+```{r fig.show="hold", out.width="50%"}
 n_lims = 10^3
 x_lims <- runif(n_lims, min=-3, max=3)
 y_lims <- runif(n_lims, min=-2, max=3.5)
@@ -176,7 +177,7 @@ ggplot()+
   geom_path(aes(x=x, y=y))
 ```
 
-```{r}
+```{r fig.show="hold", out.width="50%"}
 n_lims = 10^4
 x_lims <- runif(n_lims, min=-3, max=3)
 y_lims <- runif(n_lims, min=-2, max=3.5)
@@ -195,7 +196,7 @@ ggplot()+
   geom_path(aes(x=x, y=y))
 ```
 
-```{r}
+```{r fig.show="hold", out.width="50%"}
 n_lims = 10^5
 x_lims <- runif(n_lims, min=-3, max=3)
 y_lims <- runif(n_lims, min=-2, max=3.5)
