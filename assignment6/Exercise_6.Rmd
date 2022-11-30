@@ -278,6 +278,8 @@ legend("topleft",legend=c("linear","exp","poly 2","poly 3","poly 10"),col=c(1,2,
 
 Use the cv.glm function in the boot package for the following steps. Compare the Root Mean Squared Error and Mean Squared Error.
 
+### Predict unemploy
+
 1. Use cv.glm for Leave-one-out Cross Validation to compare the models above
 
 ```{r}
@@ -302,6 +304,8 @@ data.frame(
 
 2. Use cv.glm for 5-fold and 10-fold Cross Validation to compare the models above.
 
+### 5-fold CV
+
 ```{r}
 cv5.lm_unemploy <- cv.glm(economics, glm(lm_unemploy), K=5)
 cv5.log_unemploy <- cv.glm(economics, glm(log_unemploy), K=5)
@@ -309,8 +313,6 @@ cv5.poly.2_unemploy <- cv.glm(economics, glm(poly.2_unemploy), K=5)
 cv5.poly.3_unemploy <- cv.glm(economics, glm(poly.3_unemploy), K=5)
 cv5.poly.10_unemploy <- cv.glm(economics, glm(poly.10_unemploy), K=5)
 ```
-
-5-fold CV
 
 ```{r}
 data.frame(
@@ -321,7 +323,7 @@ data.frame(
                   sqrt(cv5.poly.3_unemploy$delta[1]),sqrt(cv5.poly.10_unemploy$delta[1])) )
 ```
 
-
+### 10-fold CV
 
 ```{r}
 cv10.lm_unemploy <- cv.glm(economics, glm(lm_unemploy), K=10)
@@ -331,8 +333,6 @@ cv10.poly.3_unemploy <- cv.glm(economics, glm(poly.3_unemploy), K=10)
 cv10.poly.10_unemploy <- cv.glm(economics, glm(poly.10_unemploy), K=10)
 ```
 
-10-fold CV
-
 ```{r}
 data.frame(
   "Model" = c("linear", "exponential", "poly 2", "poly 3", "poly 10"),
@@ -341,6 +341,80 @@ data.frame(
   "10-fold CV RMSE" = c(sqrt(cv10.lm_unemploy$delta[1]),sqrt(cv10.log_unemploy$delta[1]),sqrt(cv10.poly.2_unemploy$delta[1]),
                   sqrt(cv10.poly.3_unemploy$delta[1]),sqrt(cv10.poly.10_unemploy$delta[1])) )
 ```
+
+
+### Conclusions
+
+The results of 5-fold, 10-fold and LOO cross validation are very similar overall. Therefore we can assume that they give a reliable measure of the models performance. 
+
+The exponential performs best to predict unemploy. Poly3 and poly4 also perform well. The linear and poly10 models are not suitable.
+
+
+### Predict uempmed
+
+1. Use cv.glm for Leave-one-out Cross Validation to compare the models above
+
+```{r}
+# cost.MSE <- function(r, pi = 0) mean((r-pi)^2)
+
+cv.lm_uempmed <- cv.glm(economics, glm(lm_uempmed))
+cv.exp_uempmed <- cv.glm(economics, glm(exp_uempmed))
+cv.poly.2_uempmed <- cv.glm(economics, glm(poly.2_uempmed))
+cv.poly.3_uempmed <- cv.glm(economics, glm(poly.3_uempmed))
+cv.poly.10_uempmed <- cv.glm(economics, glm(poly.10_uempmed))
+```
+
+```{r}
+data.frame(
+  "Model" = c("linear", "exponential", "poly 2", "poly 3", "poly 10"),
+  "LOOCV MSE" = c(cv.lm_uempmed$delta[1],cv.exp_uempmed$delta[1],cv.poly.2_uempmed$delta[1],
+                  cv.poly.3_uempmed$delta[1],cv.poly.10_uempmed$delta[1]),
+  "LOOCV RMSE" = c(sqrt(cv.lm_uempmed$delta[1]),sqrt(cv.exp_uempmed$delta[1]),sqrt(cv.poly.2_uempmed$delta[1]),
+                  sqrt(cv.poly.3_uempmed$delta[1]),sqrt(cv.poly.10_uempmed$delta[1])) )
+```
+
+
+2. Use cv.glm for 5-fold and 10-fold Cross Validation to compare the models above.
+
+### 5-fold CV
+
+```{r}
+cv.lm_uempmed <- cv.glm(economics, glm(lm_uempmed),K=5)
+cv.exp_uempmed <- cv.glm(economics, glm(exp_uempmed),K=5)
+cv.poly.2_uempmed <- cv.glm(economics, glm(poly.2_uempmed),K=5)
+cv.poly.3_uempmed <- cv.glm(economics, glm(poly.3_uempmed),K=5)
+cv.poly.10_uempmed <- cv.glm(economics, glm(poly.10_uempmed),K=5)
+```
+
+```{r}
+data.frame(
+  "Model" = c("linear", "exponential", "poly 2", "poly 3", "poly 10"),
+  "LOOCV MSE" = c(cv.lm_uempmed$delta[1],cv.exp_uempmed$delta[1],cv.poly.2_uempmed$delta[1],
+                  cv.poly.3_uempmed$delta[1],cv.poly.10_uempmed$delta[1]),
+  "LOOCV RMSE" = c(sqrt(cv.lm_uempmed$delta[1]),sqrt(cv.exp_uempmed$delta[1]),sqrt(cv.poly.2_uempmed$delta[1]),
+                  sqrt(cv.poly.3_uempmed$delta[1]),sqrt(cv.poly.10_uempmed$delta[1])) )
+```
+
+### 10-fold CV
+
+```{r}
+cv.lm_uempmed <- cv.glm(economics, glm(lm_uempmed),K=10)
+cv.exp_uempmed <- cv.glm(economics, glm(exp_uempmed),K=10)
+cv.poly.2_uempmed <- cv.glm(economics, glm(poly.2_uempmed),K=10)
+cv.poly.3_uempmed <- cv.glm(economics, glm(poly.3_uempmed),K=10)
+cv.poly.10_uempmed <- cv.glm(economics, glm(poly.10_uempmed),K=10)
+```
+
+```{r}
+data.frame(
+  "Model" = c("linear", "exponential", "poly 2", "poly 3", "poly 10"),
+  "LOOCV MSE" = c(cv.lm_uempmed$delta[1],cv.exp_uempmed$delta[1],cv.poly.2_uempmed$delta[1],
+                  cv.poly.3_uempmed$delta[1],cv.poly.10_uempmed$delta[1]),
+  "LOOCV RMSE" = c(sqrt(cv.lm_uempmed$delta[1]),sqrt(cv.exp_uempmed$delta[1]),sqrt(cv.poly.2_uempmed$delta[1]),
+                  sqrt(cv.poly.3_uempmed$delta[1]),sqrt(cv.poly.10_uempmed$delta[1])) )
+```
+
+The polynomial models have the best performance to predict uempmed. The best results are obtained with the poly10 model. However, the poly2 and poly3 models are almost as good.
 
 ### d)
 
